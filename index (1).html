@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RimbaKuis</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --jungle-dark:#0a2218;--jungle-mid:#0f3d28;--jungle-green:#1a6b3c;
+  --jungle-light:#2d9b58;--leaf:#4ade80;--gold:#f9c74f;--gold-dark:#e6a817;
+  --red:#ef4444;--white:#fff;--card-bg:rgba(255,255,255,0.08);
+  --card-border:rgba(255,255,255,0.15);--text-muted:rgba(255,255,255,0.6);
+  --radius:16px;--radius-sm:10px;
+}
+body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-serif;min-height:100vh;overflow-x:hidden;}
+.bg-pattern{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(26,107,60,0.3) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(15,61,40,0.5) 0%,transparent 60%);pointer-events:none;z-index:0;}
+.leaf-deco{position:fixed;pointer-events:none;z-index:0;opacity:0.12;font-size:4rem;}
+.leaf-deco.tl{top:-10px;left:-10px;transform:rotate(-30deg);}
+.leaf-deco.tr{top:-10px;right:-10px;transform:rotate(30deg);}
+.leaf-deco.bl{bottom:-10px;left:-10px;transform:rotate(210deg);}
+.leaf-deco.br{bottom:-10px;right:-10px;transform:rotate(150deg);}
+.screen{display:none;position:relative;z-index:1;min-height:100vh;}
+.screen.active{display:flex;flex-direction:column;}
+#screen-loading{align-items:center;justify-content:center;}
+.loading-logo{text-align:center;}
+.loading-logo .logo-icon{font-size:5rem;display:block;animation:pulse 1.2s ease infinite alternate;}
+.loading-logo h1{font-family:'Fredoka One',cursive;font-size:2.5rem;color:var(--gold);margin-top:.5rem;}
+.loading-logo p{color:var(--text-muted);margin-top:.5rem;}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.1)}}
+#screen-auth{align-items:center;justify-content:center;padding:2rem;}
+.auth-logo{text-align:center;margin-bottom:2rem;}
+.auth-logo .logo-icon{font-size:4rem;display:block;filter:drop-shadow(0 0 20px rgba(74,222,128,0.5));}
+.auth-logo h1{font-family:'Fredoka One',cursive;font-size:2.8rem;color:var(--gold);}
+.auth-logo p{color:var(--text-muted);font-size:.95rem;margin-top:.3rem;}
+.auth-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:2rem;width:100%;max-width:380px;backdrop-filter:blur(10px);}
+.auth-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;background:rgba(0,0,0,0.2);border-radius:var(--radius-sm);padding:4px;}
+.auth-tab{flex:1;padding:.5rem;border-radius:8px;border:none;background:transparent;color:var(--text-muted);font-family:'Nunito',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;transition:.2s;}
+.auth-tab.active{background:var(--jungle-light);color:var(--white);}
+.auth-form{display:none;}
+.auth-form.active{display:block;}
+.form-group{margin-bottom:1rem;}
+.form-group label{display:block;font-size:.85rem;font-weight:700;color:var(--text-muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px;}
+.form-group input{width:100%;padding:.75rem 1rem;background:rgba(0,0,0,0.3);border:1px solid var(--card-border);border-radius:var(--radius-sm);color:var(--white);font-family:'Nunito',sans-serif;font-size:1rem;outline:none;transition:.2s;}
+.form-group input:focus{border-color:var(--leaf);box-shadow:0 0 0 3px rgba(74,222,128,0.15);}
+.form-group input::placeholder{color:rgba(255,255,255,0.3);}
+.btn{display:block;width:100%;padding:.85rem;border-radius:var(--radius-sm);border:none;font-family:'Nunito',sans-serif;font-weight:800;font-size:1rem;cursor:pointer;transition:.15s;text-align:center;}
+.btn:disabled{opacity:.6;cursor:not-allowed;}
+.btn-primary{background:linear-gradient(135deg,var(--jungle-light),var(--leaf));color:var(--white);box-shadow:0 4px 15px rgba(45,155,88,0.4);}
+.btn-primary:hover:not(:disabled){transform:translateY(-1px);}
+.btn-google{background:var(--white);color:#333;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-top:.75rem;}
+.btn-google:hover{background:#f5f5f5;}
+.divider{display:flex;align-items:center;gap:.75rem;margin:1rem 0;color:var(--text-muted);font-size:.85rem;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--card-border);}
+.google-icon{width:18px;height:18px;}
+.auth-error{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.85rem;color:#fca5a5;margin-bottom:1rem;display:none;}
+.auth-success{background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);border-radius:var(--radius-sm);padding:.6rem .9rem;font-size:.85rem;color:#86efac;margin-bottom:1rem;display:none;}
+#screen-main{background:var(--jungle-dark);}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:rgba(0,0,0,0.3);border-bottom:1px solid var(--card-border);position:sticky;top:0;z-index:10;backdrop-filter:blur(10px);}
+.topbar-logo{font-family:'Fredoka One',cursive;font-size:1.5rem;color:var(--gold);}
+.topbar-user{display:flex;align-items:center;gap:.5rem;}
+.avatar-sm{width:34px;height:34px;border-radius:50%;border:2px solid var(--leaf);display:flex;align-items:center;justify-content:center;font-size:1rem;background:var(--jungle-mid);}
+.topbar-nick{font-weight:700;font-size:.9rem;}
+.nav-tabs{display:flex;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--card-border);position:sticky;top:65px;z-index:9;}
+.nav-tab{flex:1;padding:.85rem;border:none;background:transparent;color:var(--text-muted);font-family:'Nunito',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;transition:.2s;border-bottom:3px solid transparent;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.nav-tab .tab-icon{font-size:1.3rem;}
+.nav-tab.active{color:var(--leaf);border-bottom-color:var(--leaf);}
+.tab-content{display:none;padding:1.25rem;flex:1;}
+.tab-content.active{display:block;}
+.profile-hero{background:linear-gradient(135deg,var(--jungle-mid),var(--jungle-green));border-radius:20px;padding:1.5rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;}
+.avatar-lg{width:70px;height:70px;border-radius:50%;border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:2rem;background:var(--jungle-dark);}
+.profile-info h2{font-family:'Fredoka One',cursive;font-size:1.4rem;}
+.profile-info p{color:var(--text-muted);font-size:.85rem;margin-top:.2rem;}
+.rank-badge{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:var(--jungle-dark);padding:.2rem .7rem;border-radius:20px;font-weight:800;font-size:.8rem;display:inline-block;margin-top:.4rem;}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem;}
+.stat-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:1rem;text-align:center;}
+.stat-num{font-family:'Fredoka One',cursive;font-size:2rem;margin-bottom:.2rem;}
+.stat-num.wins{color:var(--leaf);}
+.stat-num.losses{color:var(--red);}
+.stat-label{font-size:.8rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.xp-bar-wrap{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;}
+.xp-label{display:flex;justify-content:space-between;font-size:.85rem;font-weight:700;margin-bottom:.6rem;}
+.xp-bar{height:10px;background:rgba(0,0,0,0.3);border-radius:10px;overflow:hidden;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--jungle-light),var(--leaf));border-radius:10px;transition:width 1s ease;}
+.avatar-picker{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:1rem;margin-bottom:1rem;}
+.avatar-picker-label{font-size:.85rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.75rem;}
+.avatar-grid{display:flex;flex-wrap:wrap;gap:.5rem;}
+.avatar-opt{width:42px;height:42px;border-radius:50%;border:2px solid var(--card-border);background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-size:1.3rem;cursor:pointer;transition:.2s;}
+.avatar-opt.selected{border-color:var(--gold);background:rgba(249,199,79,0.15);}
+.avatar-opt:hover{border-color:var(--leaf);}
+.logout-btn{width:100%;padding:.7rem;border-radius:var(--radius-sm);border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:var(--red);font-family:'Nunito',sans-serif;font-weight:700;cursor:pointer;transition:.2s;}
+.logout-btn:hover{background:rgba(239,68,68,0.2);}
+.rating-header{text-align:center;margin-bottom:1.25rem;}
+.rating-header h2{font-family:'Fredoka One',cursive;font-size:1.6rem;}
+.rating-header p{color:var(--text-muted);font-size:.9rem;}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:.5rem;margin-bottom:1.5rem;height:120px;}
+.podium-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;}
+.pod-avatar{font-size:1.6rem;}
+.pod-name{font-size:.75rem;font-weight:800;text-align:center;max-width:60px;}
+.pod-score{font-size:.7rem;color:var(--text-muted);}
+.podium-block{border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One',cursive;font-size:1.3rem;color:#fff;}
+.pod-1{width:70px;height:90px;background:linear-gradient(180deg,#f9c74f,#e6a817);}
+.pod-2{width:60px;height:65px;background:linear-gradient(180deg,#b0b0b0,#808080);}
+.pod-3{width:60px;height:45px;background:linear-gradient(180deg,#cd7f32,#9a5f22);}
+.rating-list{display:flex;flex-direction:column;gap:.5rem;}
+.rating-item{display:flex;align-items:center;gap:.75rem;background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius-sm);padding:.75rem 1rem;}
+.rating-item.me{border-color:var(--leaf);background:rgba(74,222,128,0.08);}
+.rating-pos{font-family:'Fredoka One',cursive;font-size:1.1rem;width:28px;text-align:center;color:var(--text-muted);}
+.rating-avatar{font-size:1.3rem;}
+.rating-info{flex:1;}
+.r-name{font-weight:700;font-size:.95rem;}
+.r-stats{font-size:.78rem;color:var(--text-muted);}
+.rating-score{font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--gold);}
+.battle-intro{text-align:center;padding:1rem 0;}
+.battle-intro h2{font-family:'Fredoka One',cursive;font-size:2rem;margin-bottom:.5rem;}
+.battle-intro p{color:var(--text-muted);font-size:.95rem;margin-bottom:1.5rem;}
+.difficulty-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1.5rem;}
+.diff-card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:1rem .75rem;cursor:pointer;transition:.2s;text-align:center;}
+.diff-card.selected{border-color:var(--leaf);background:rgba(74,222,128,0.1);}
+.diff-card:hover{border-color:var(--leaf);}
+.diff-icon{font-size:1.8rem;margin-bottom:.4rem;}
+.diff-name{font-weight:800;font-size:.85rem;}
+.diff-desc{font-size:.7rem;color:var(--text-muted);margin-top:.2rem;}
+.btn-battle{display:block;width:100%;padding:1.1rem;border-radius:var(--radius);border:none;font-family:'Fredoka One',cursive;font-size:1.4rem;cursor:pointer;background:linear-gradient(135deg,#f97316,#ef4444);color:var(--white);box-shadow:0 6px 20px rgba(239,68,68,0.4);letter-spacing:.5px;transition:.2s;}
+.btn-battle:hover{transform:translateY(-2px);}
+#screen-game{background:linear-gradient(180deg,var(--jungle-dark) 0%,#0b2f1d 100%);}
+.game-hud{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:rgba(0,0,0,0.4);border-bottom:1px solid var(--card-border);}
+.hud-player{display:flex;align-items:center;gap:.5rem;}
+.hav{font-size:1.3rem;}
+.hname{font-weight:800;font-size:.85rem;max-width:80px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.hscore{font-family:'Fredoka One',cursive;font-size:1.3rem;}
+.hud-vs{font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--gold);}
+.hud-score-wrap{display:flex;flex-direction:column;align-items:center;}
+.hud-timer{font-family:'Fredoka One',cursive;font-size:.9rem;color:var(--text-muted);}
+.enemy-zone{background:linear-gradient(180deg,rgba(239,68,68,0.15),transparent);border-bottom:1px solid rgba(239,68,68,0.2);padding:.6rem .5rem .3rem;}
+.zone-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;text-align:center;margin-bottom:.5rem;color:rgba(239,68,68,0.7);}
+.grid-board{display:flex;flex-direction:column;align-items:center;padding:.25rem;}
+.board-row{display:flex;justify-content:center;}
+.cell{width:52px;height:52px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;transition:.15s;user-select:none;}
+.cell-inner{width:38px;height:38px;transform:rotate(45deg);border-radius:4px;background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;transition:.2s;position:relative;overflow:hidden;}
+.cell:hover .cell-inner{border-color:var(--gold);background:rgba(249,199,79,0.15);transform:rotate(45deg) scale(1.1);}
+.cell .cell-content{transform:rotate(-45deg);font-size:1rem;position:absolute;}
+.cell.player .cell-inner{background:rgba(74,222,128,0.3);border-color:var(--leaf);}
+.cell.enemy .cell-inner{background:rgba(239,68,68,0.3);border-color:var(--red);}
+.cell.locked{cursor:default;opacity:.6;}
+.cell.locked:hover .cell-inner{transform:rotate(45deg);border-color:rgba(255,255,255,0.15);}
+.player-zone{background:linear-gradient(180deg,transparent,rgba(74,222,128,0.12));border-top:1px solid rgba(74,222,128,0.2);padding:.3rem .5rem .6rem;}
+.zone-label.player-label{color:rgba(74,222,128,0.7);}
+.question-panel{margin:.75rem 1rem;background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;overflow:hidden;}
+.q-top{padding:.75rem 1rem .5rem;display:flex;align-items:center;justify-content:space-between;}
+.q-badge{background:linear-gradient(135deg,var(--jungle-light),var(--leaf));color:var(--white);padding:.2rem .7rem;border-radius:20px;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
+.q-cell-hint{font-size:.75rem;color:var(--text-muted);}
+.q-text{padding:.25rem 1rem .75rem;font-size:.95rem;font-weight:600;line-height:1.4;}
+.answers-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding:0 .75rem .75rem;}
+.answer-btn{padding:.7rem .5rem;border-radius:var(--radius-sm);border:1.5px solid var(--card-border);background:rgba(0,0,0,0.2);color:var(--white);font-family:'Nunito',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;transition:.15s;text-align:left;line-height:1.3;}
+.answer-btn:hover{border-color:var(--gold);background:rgba(249,199,79,0.1);}
+.answer-btn.correct{border-color:var(--leaf);background:rgba(74,222,128,0.2);color:var(--leaf);pointer-events:none;}
+.answer-btn.wrong{border-color:var(--red);background:rgba(239,68,68,0.2);color:var(--red);pointer-events:none;}
+.answer-btn.disabled{opacity:.5;pointer-events:none;}
+.answer-letter{font-family:'Fredoka One',cursive;font-size:1rem;margin-right:.4rem;}
+#screen-result{align-items:center;justify-content:center;padding:2rem;text-align:center;}
+.result-icon{font-size:5rem;display:block;margin-bottom:1rem;animation:bounce .6s ease infinite alternate;}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+.result-title{font-family:'Fredoka One',cursive;font-size:2.8rem;margin-bottom:.5rem;}
+.result-title.win{color:var(--gold);}
+.result-title.lose{color:var(--red);}
+.result-subtitle{color:var(--text-muted);font-size:1rem;margin-bottom:1.5rem;}
+.result-points{font-family:'Fredoka One',cursive;font-size:3rem;margin-bottom:.5rem;}
+.result-points.plus{color:var(--leaf);}
+.result-points.minus{color:var(--red);}
+.result-stats{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;width:100%;max-width:300px;margin:0 auto 1.5rem;}
+.rs-card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:var(--radius);padding:.9rem;}
+.rsn{font-family:'Fredoka One',cursive;font-size:1.6rem;}
+.rsl{font-size:.75rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;}
+.btn-play-again{width:100%;max-width:300px;padding:1rem;border-radius:var(--radius);border:none;font-family:'Fredoka One',cursive;font-size:1.3rem;cursor:pointer;background:linear-gradient(135deg,var(--jungle-light),var(--leaf));color:var(--white);box-shadow:0 6px 20px rgba(45,155,88,0.4);margin-bottom:.75rem;transition:.2s;}
+.btn-play-again:hover{transform:translateY(-2px);}
+.btn-home{width:100%;max-width:300px;padding:.85rem;border-radius:var(--radius);border:1px solid var(--card-border);background:var(--card-bg);color:var(--white);font-family:'Nunito',sans-serif;font-weight:700;font-size:1rem;cursor:pointer;transition:.2s;}
+.btn-home:hover{background:rgba(255,255,255,0.1);}
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:100;}
+.confetto{position:absolute;width:8px;height:8px;opacity:0;animation:fall linear forwards;}
+@keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+</style>
+</head>
+<body>
+<div class="bg-pattern"></div>
+<div class="leaf-deco tl">🌿</div><div class="leaf-deco tr">🌿</div>
+<div class="leaf-deco bl">🌿</div><div class="leaf-deco br">🌿</div>
+
+<div class="screen active" id="screen-loading">
+  <div class="loading-logo">
+    <span class="logo-icon">🌴</span>
+    <h1>RimbaKuis</h1>
+    <p>Memuat...</p>
+  </div>
+</div>
+
+<div class="screen" id="screen-auth">
+  <div class="auth-logo">
+    <span class="logo-icon">🌴</span>
+    <h1>RimbaKuis</h1>
+    <p>Tantang teman, taklukkan rimba!</p>
+  </div>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('masuk')">Masuk</button>
+      <button class="auth-tab" onclick="switchAuthTab('daftar')">Daftar</button>
+    </div>
+    <div class="auth-form active" id="form-masuk">
+      <div id="login-error" class="auth-error"></div>
+      <div class="form-group"><label>Email</label><input type="email" placeholder="contoh@email.com" id="login-email"></div>
+      <div class="form-group"><label>Kata Sandi</label><input type="password" placeholder="••••••••" id="login-pass"></div>
+      <button class="btn btn-primary" id="btn-login" onclick="doLogin()">Masuk ke Rimba 🌴</button>
+      <div class="divider">atau</div>
+      <button class="btn btn-google" onclick="doGoogleLogin()">
+        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Masuk dengan Google
+      </button>
+    </div>
+    <div class="auth-form" id="form-daftar">
+      <div id="reg-error" class="auth-error"></div>
+      <div id="reg-success" class="auth-success"></div>
+      <div class="form-group"><label>Nama Pengguna</label><input type="text" placeholder="Nickname kamu..." id="reg-nick"></div>
+      <div class="form-group"><label>Email</label><input type="email" placeholder="contoh@email.com" id="reg-email"></div>
+      <div class="form-group"><label>Kata Sandi</label><input type="password" placeholder="Min. 6 karakter" id="reg-pass"></div>
+      <button class="btn btn-primary" id="btn-register" onclick="doRegister()">Buat Akun 🎮</button>
+      <div class="divider">atau</div>
+      <button class="btn btn-google" onclick="doGoogleLogin()">
+        <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Daftar dengan Google
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-main">
+  <div class="topbar">
+    <span class="topbar-logo">🌴 RimbaKuis</span>
+    <div class="topbar-user">
+      <div class="avatar-sm" id="topbar-avatar">🦁</div>
+      <span class="topbar-nick" id="topbar-nick">Pemain</span>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('profil')"><span class="tab-icon">👤</span>Profil</button>
+    <button class="nav-tab" onclick="switchTab('peringkat')"><span class="tab-icon">🏆</span>Peringkat</button>
+    <button class="nav-tab" onclick="switchTab('pertarungan')"><span class="tab-icon">⚔️</span>Pertarungan</button>
+  </div>
+  <div class="tab-content active" id="tab-profil">
+    <div class="profile-hero">
+      <div class="avatar-lg" id="profile-avatar-lg">🦁</div>
+      <div class="profile-info">
+        <h2 id="profile-nick">Pemain</h2>
+        <p id="profile-email">—</p>
+        <span class="rank-badge" id="profile-rank">Peringkat #—</span>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-num wins" id="stat-wins">0</div><div class="stat-label">Kemenangan</div></div>
+      <div class="stat-card"><div class="stat-num losses" id="stat-losses">0</div><div class="stat-label">Kekalahan</div></div>
+    </div>
+    <div class="xp-bar-wrap">
+      <div class="xp-label"><span>⭐ Poin Total</span><span id="stat-xp">0 poin</span></div>
+      <div class="xp-bar"><div class="xp-fill" id="xp-fill" style="width:0%"></div></div>
+    </div>
+    <div class="avatar-picker">
+      <div class="avatar-picker-label">Pilih Avatar</div>
+      <div class="avatar-grid" id="avatar-grid"></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Keluar dari Akun</button>
+  </div>
+  <div class="tab-content" id="tab-peringkat">
+    <div class="rating-header"><h2>🏆 Papan Peringkat</h2><p>Pemain terbaik di rimba!</p></div>
+    <div class="podium" id="podium-display"></div>
+    <div class="rating-list" id="rating-list"></div>
+  </div>
+  <div class="tab-content" id="tab-pertarungan">
+    <div class="battle-intro">
+      <h2>⚔️ Mulai Pertarungan!</h2>
+      <p>Pilih kesulitan dan kuasai seluruh rimba!</p>
+      <div class="difficulty-grid">
+        <div class="diff-card selected" data-diff="mudah"><div class="diff-icon">🌱</div><div class="diff-name">Mudah</div><div class="diff-desc">Untuk pemula</div></div>
+        <div class="diff-card" data-diff="sedang"><div class="diff-icon">🌿</div><div class="diff-name">Sedang</div><div class="diff-desc">Tantangan seru</div></div>
+        <div class="diff-card" data-diff="sulit"><div class="diff-icon">🌳</div><div class="diff-name">Sulit</div><div class="diff-desc">Ahli rimba</div></div>
+      </div>
+      <button class="btn-battle" onclick="startGame()">🥊 LAWAN SEKARANG!</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-game">
+  <div class="game-hud">
+    <div class="hud-player">
+      <span class="hav" id="hud-bot-av">🤖</span>
+      <div><div class="hname" id="hud-bot-name">Bot</div><div class="hscore" id="hud-bot-score" style="color:var(--red)">0</div></div>
+    </div>
+    <div class="hud-score-wrap">
+      <div class="hud-vs">VS</div>
+      <div class="hud-timer" id="hud-timer">⬡ 15 sel</div>
+    </div>
+    <div class="hud-player" style="flex-direction:row-reverse;text-align:right">
+      <span class="hav" id="hud-player-av">🦁</span>
+      <div><div class="hname" id="hud-player-name">Kamu</div><div class="hscore" id="hud-player-score" style="color:var(--leaf)">0</div></div>
+    </div>
+  </div>
+  <div class="enemy-zone">
+    <div class="zone-label">🤖 WILAYAH LAWAN</div>
+    <div class="grid-board" id="enemy-grid"></div>
+  </div>
+  <div class="question-panel" id="question-panel" style="display:none">
+    <div class="q-top">
+      <span class="q-badge" id="q-badge">Pertanyaan</span>
+      <span class="q-cell-hint" id="q-cell-hint"></span>
+    </div>
+    <div class="q-text" id="q-text">Memuat...</div>
+    <div class="answers-grid" id="answers-grid"></div>
+  </div>
+  <div class="player-zone">
+    <div class="zone-label player-label">🌿 WILAYAHMU</div>
+    <div class="grid-board" id="player-grid"></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-result">
+  <div class="confetti-wrap" id="confetti-wrap"></div>
+  <span class="result-icon" id="result-icon">🏆</span>
+  <div class="result-title" id="result-title">Kamu Menang!</div>
+  <div class="result-subtitle" id="result-subtitle">Luar biasa!</div>
+  <div class="result-points" id="result-points">+100</div>
+  <div class="result-stats">
+    <div class="rs-card"><div class="rsn" id="rs-correct">0</div><div class="rsl">Benar</div></div>
+    <div class="rs-card"><div class="rsn" id="rs-wrong">0</div><div class="rsl">Salah</div></div>
+    <div class="rs-card"><div class="rsn" id="rs-cells">0</div><div class="rsl">Sel Dikuasai</div></div>
+    <div class="rs-card"><div class="rsn" id="rs-total">0</div><div class="rsl">Total Poin</div></div>
+  </div>
+  <button class="btn-play-again" onclick="startGame()">🎮 Main Lagi!</button>
+  <button class="btn-home" onclick="showMain()">🏠 Kembali ke Beranda</button>
+</div>
+
+<script>
+const SUPABASE_URL='https://ialooksjieoxzvndworp.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlhbG9va3NqaWVveHp2bmR3b3JwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNzQ5MDUsImV4cCI6MjA5NDk1MDkwNX0.cF8jG32GVKqxiQTxo2YdOFsFDvCJ4nAtkIDwc1d1iao';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const AVATARS=['🦁','🐯','🦊','🐺','🦅','🐉','🦋','🦓','🐘','🦒','🦜','🐊'];
+const BOT_NAMES=['Muhammad Rizki','Siti Aminah','Budi Santoso','Dewi Rahayu','Ahmad Fauzi','Nur Hidayah','Andi Pratama','Sari Wulandari'];
+const BOT_AVATARS=['🤖','👾','🐻','🐼','🦝','🦔','🦡','🦫'];
+const ROWS=3,COLS=5,TOTAL=15;
+let currentUser=null,currentProfile=null,allQuestions=[],gameState=null;
+
+async function init(){
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(session){
+      currentUser=session.user;
+      await loadProfile();
+      await loadQuestions();
+      renderAvatarPicker();
+      showScreen('main');
+    } else {
+      currentUser=null;currentProfile=null;
+      showScreen('auth');
+    }
+  });
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session) showScreen('auth');
+}
+
+function switchAuthTab(t){
+  document.querySelectorAll('.auth-tab').forEach((b,i)=>b.classList.toggle('active',['masuk','daftar'][i]===t));
+  document.querySelectorAll('.auth-form').forEach(f=>f.classList.remove('active'));
+  document.getElementById('form-'+t).classList.add('active');
+}
+function showAuthError(id,msg){const el=document.getElementById(id+'-error');el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',4000);}
+function showAuthSuccess(id,msg){const el=document.getElementById(id+'-success');el.textContent=msg;el.style.display='block';}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pass=document.getElementById('login-pass').value;
+  if(!email||!pass)return showAuthError('login','Isi email dan kata sandi!');
+  const btn=document.getElementById('btn-login');
+  btn.disabled=true;btn.textContent='Memuat...';
+  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false;btn.textContent='Masuk ke Rimba 🌴';
+  if(error)showAuthError('login','Email atau kata sandi salah.');
+}
+async function doRegister(){
+  const nick=document.getElementById('reg-nick').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const pass=document.getElementById('reg-pass').value;
+  if(!nick||!email||!pass)return showAuthError('reg','Semua kolom wajib diisi!');
+  if(pass.length<6)return showAuthError('reg','Kata sandi minimal 6 karakter.');
+  const btn=document.getElementById('btn-register');
+  btn.disabled=true;btn.textContent='Mendaftar...';
+  const av=AVATARS[Math.floor(Math.random()*AVATARS.length)];
+  const{error}=await sb.auth.signUp({email,password:pass,options:{data:{nick,avatar:av}}});
+  btn.disabled=false;btn.textContent='Buat Akun 🎮';
+  if(error)showAuthError('reg',error.message);
+  else showAuthSuccess('reg','✅ Akun dibuat! Cek email untuk verifikasi, lalu masuk.');
+}
+async function doGoogleLogin(){
+  await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.href}});
+}
+async function doLogout(){await sb.auth.signOut();}
+
+async function loadProfile(){
+  if(!currentUser)return;
+  const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  currentProfile=data;
+  renderProfile();
+  await loadLeaderboard();
+}
+function renderProfile(){
+  const p=currentProfile;if(!p)return;
+  const av=p.avatar||'🦁';
+  document.getElementById('topbar-avatar').textContent=av;
+  document.getElementById('topbar-nick').textContent=p.nick;
+  document.getElementById('profile-avatar-lg').textContent=av;
+  document.getElementById('profile-nick').textContent=p.nick;
+  document.getElementById('profile-email').textContent=currentUser.email;
+  document.getElementById('stat-wins').textContent=p.wins;
+  document.getElementById('stat-losses').textContent=p.losses;
+  document.getElementById('stat-xp').textContent=p.score+' poin';
+  document.getElementById('xp-fill').style.width=Math.min(100,(p.score%500)/5)+'%';
+}
+function renderAvatarPicker(){
+  const cur=currentProfile?.avatar||'🦁';
+  document.getElementById('avatar-grid').innerHTML=AVATARS.map(av=>`<div class="avatar-opt${av===cur?' selected':''}" onclick="changeAvatar('${av}')">${av}</div>`).join('');
+}
+async function changeAvatar(av){
+  if(!currentUser)return;
+  await sb.from('profiles').update({avatar:av}).eq('id',currentUser.id);
+  currentProfile.avatar=av;renderProfile();renderAvatarPicker();
+}
+
+async function loadLeaderboard(){
+  const{data}=await sb.from('profiles').select('nick,avatar,wins,losses,score').order('score',{ascending:false}).limit(10);
+  if(!data)return;
+  renderLeaderboard(data);
+  const rank=data.findIndex(p=>p.nick===currentProfile?.nick)+1;
+  document.getElementById('profile-rank').textContent=rank?'🥇 Peringkat #'+rank:'—';
+}
+function renderLeaderboard(data){
+  if(!data||!data.length)return;
+  const top3=[data[1],data[0],data[2]].filter(Boolean);
+  const podH=['pod-2','pod-1','pod-3'],order=[2,1,3];
+  document.getElementById('podium-display').innerHTML=top3.map((p,i)=>`
+    <div class="podium-item"><span class="pod-avatar">${p.avatar||'🦁'}</span><div class="pod-name">${p.nick}</div><div class="pod-score">${p.score} poin</div><div class="podium-block ${podH[i]}">${order[i]}</div></div>`).join('');
+  document.getElementById('rating-list').innerHTML=data.map((p,i)=>{
+    const isMe=p.nick===currentProfile?.nick;
+    return `<div class="rating-item${isMe?' me':''}"><span class="rating-pos">${i+1}</span><span class="rating-avatar">${p.avatar||'🦁'}</span><div class="rating-info"><div class="r-name">${p.nick}${isMe?' (Kamu)':''}</div><div class="r-stats">${p.wins}M / ${p.losses}K</div></div><span class="rating-score">${p.score}</span></div>`;
+  }).join('');
+}
+
+async function loadQuestions(){
+  const{data}=await sb.from('questions').select('*');
+  allQuestions=data||[];
+}
+
+function showScreen(s){document.querySelectorAll('.screen').forEach(sc=>sc.classList.remove('active'));document.getElementById('screen-'+s).classList.add('active');}
+function showMain(){loadLeaderboard();showScreen('main');switchTab('profil');}
+function switchTab(t){
+  document.querySelectorAll('.nav-tab').forEach((b,i)=>b.classList.toggle('active',['profil','peringkat','pertarungan'][i]===t));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='peringkat')loadLeaderboard();
+}
+document.querySelectorAll('.diff-card').forEach(c=>{
+  c.addEventListener('click',()=>{document.querySelectorAll('.diff-card').forEach(x=>x.classList.remove('selected'));c.classList.add('selected');});
+});
+
+async function startGame(){
+  if(gameState?.botInterval)clearInterval(gameState.botInterval);
+  const diff=document.querySelector('.diff-card.selected')?.dataset.diff||'mudah';
+  const botAccuracy=diff==='mudah'?0.45:diff==='sedang'?0.6:0.75;
+  const botSpeed=diff==='mudah'?4500:diff==='sedang'?3500:2500;
+  let pool=allQuestions.filter(q=>q.difficulty===diff);
+  if(pool.length<5)pool=allQuestions;
+  const botNick=BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)];
+  const botAv=BOT_AVATARS[Math.floor(Math.random()*BOT_AVATARS.length)];
+  gameState={cells:Array(ROWS).fill(null).map(()=>Array(COLS).fill('neutral')),playerScore:0,botScore:0,correctCount:0,wrongCount:0,selectedCell:null,questionActive:false,botNick,botAv,usedIds:[],gameOver:false,botAccuracy,botInterval:null,pool};
+  document.getElementById('hud-bot-name').textContent=botNick;
+  document.getElementById('hud-bot-av').textContent=botAv;
+  document.getElementById('hud-player-name').textContent=currentProfile?.nick||'Kamu';
+  document.getElementById('hud-player-av').textContent=currentProfile?.avatar||'🦁';
+  updateScoreHUD();renderGrids();
+  document.getElementById('question-panel').style.display='none';
+  showScreen('game');
+  gameState.botInterval=setInterval(botTurn,botSpeed);
+}
+
+function renderGrids(){renderZone('enemy-grid',[0,1],gameState.cells);renderZone('player-grid',[1,2],gameState.cells);updateCellCount();}
+function renderZone(id,rows,cells){
+  const cont=document.getElementById(id);cont.innerHTML='';
+  rows.forEach(r=>{
+    const row=document.createElement('div');row.className='board-row';
+    for(let c=0;c<COLS;c++){
+      const cell=document.createElement('div');cell.className='cell';
+      const owner=cells[r][c];
+      if(owner!=='neutral')cell.classList.add(owner);
+      const inner=document.createElement('div');inner.className='cell-inner';
+      const content=document.createElement('span');content.className='cell-content';
+      content.textContent=owner==='player'?'🌿':owner==='enemy'?'🔥':'🌑';
+      inner.appendChild(content);cell.appendChild(inner);
+      if(owner==='neutral')cell.addEventListener('click',()=>onCellClick(r,c));
+      else cell.classList.add('locked');
+      row.appendChild(cell);
+    }
+    cont.appendChild(row);
+  });
+}
+function onCellClick(r,c){
+  const g=gameState;
+  if(g.questionActive||g.gameOver||g.cells[r][c]!=='neutral')return;
+  g.selectedCell={r,c};g.questionActive=true;showQuestion(r,c);
+}
+function showQuestion(r,c){
+  const g=gameState;
+  let available=g.pool.filter(q=>!g.usedIds.includes(q.id));
+  if(!available.length){g.usedIds=[];available=g.pool;}
+  const q=available[Math.floor(Math.random()*available.length)];
+  g.usedIds.push(q.id);g.currentQ=q;
+  document.getElementById('question-panel').style.display='block';
+  document.getElementById('q-badge').textContent=q.category;
+  document.getElementById('q-cell-hint').textContent=`Sel [${r+1},${c+1}]`;
+  document.getElementById('q-text').textContent=q.question;
+  const answers=[q.answer_a,q.answer_b,q.answer_c,q.answer_d];
+  const letters=['A','B','C','D'];
+  document.getElementById('answers-grid').innerHTML=answers.map((ans,i)=>`<button class="answer-btn" onclick="onAnswer(${i},${q.correct})"><span class="answer-letter">${letters[i]}.</span>${ans}</button>`).join('');
+}
+function onAnswer(chosen,correct){
+  const g=gameState;
+  document.querySelectorAll('.answer-btn').forEach((b,i)=>b.classList.add(i===correct?'correct':i===chosen&&chosen!==correct?'wrong':'disabled'));
+  const{r,c}=g.selectedCell;
+  if(chosen===correct){g.cells[r][c]='player';g.playerScore++;g.correctCount++;}
+  else{g.cells[r][c]='enemy';g.botScore++;g.wrongCount++;}
+  updateScoreHUD();renderGrids();
+  setTimeout(()=>{document.getElementById('question-panel').style.display='none';g.questionActive=false;g.selectedCell=null;checkGameOver();},1200);
+}
+function botTurn(){
+  const g=gameState;if(g.gameOver||g.questionActive)return;
+  const neutral=[];
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g.cells[r][c]==='neutral')neutral.push({r,c});
+  if(!neutral.length){checkGameOver();return;}
+  const pick=neutral[Math.floor(Math.random()*neutral.length)];
+  if(Math.random()<g.botAccuracy){g.cells[pick.r][pick.c]='enemy';g.botScore++;}
+  else{g.cells[pick.r][pick.c]='player';g.playerScore++;}
+  updateScoreHUD();renderGrids();checkGameOver();
+}
+function checkGameOver(){const g=gameState;if(g.gameOver)return;if(g.playerScore+g.botScore>=TOTAL)endGame();}
+function updateScoreHUD(){document.getElementById('hud-player-score').textContent=gameState.playerScore;document.getElementById('hud-bot-score').textContent=gameState.botScore;}
+function updateCellCount(){let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(gameState.cells[r][c]==='neutral')n++;document.getElementById('hud-timer').textContent='⬡ '+n+' sel tersisa';}
+
+async function endGame(){
+  const g=gameState;if(g.gameOver)return;
+  g.gameOver=true;clearInterval(g.botInterval);
+  const won=g.playerScore>g.botScore;
+  const pts=won?100:-10;
+  if(currentUser&&currentProfile){
+    const newScore=Math.max(0,currentProfile.score+pts);
+    const newWins=currentProfile.wins+(won?1:0);
+    const newLosses=currentProfile.losses+(won?0:1);
+    await sb.from('profiles').update({score:newScore,wins:newWins,losses:newLosses}).eq('id',currentUser.id);
+    await sb.from('game_results').insert({player_id:currentUser.id,won,player_score:g.playerScore,bot_score:g.botScore,correct_answers:g.correctCount,wrong_answers:g.wrongCount});
+    currentProfile.score=newScore;currentProfile.wins=newWins;currentProfile.losses=newLosses;
+    renderProfile();
+  }
+  document.getElementById('result-icon').textContent=won?'🏆':'😔';
+  document.getElementById('result-title').textContent=won?'Kamu Menang!':'Kamu Kalah...';
+  document.getElementById('result-title').className='result-title '+(won?'win':'lose');
+  document.getElementById('result-subtitle').textContent=won?'Luar biasa! Rimba telah ditaklukkan!':'Jangan menyerah, coba lagi!';
+  document.getElementById('result-points').textContent=(pts>0?'+':'')+pts+' poin';
+  document.getElementById('result-points').className='result-points '+(pts>0?'plus':'minus');
+  document.getElementById('rs-correct').textContent=g.correctCount;
+  document.getElementById('rs-wrong').textContent=g.wrongCount;
+  document.getElementById('rs-cells').textContent=g.playerScore;
+  document.getElementById('rs-total').textContent=currentProfile?.score||0;
+  showScreen('result');
+  if(won)spawnConfetti();
+}
+function spawnConfetti(){
+  const wrap=document.getElementById('confetti-wrap');wrap.innerHTML='';
+  const colors=['#f9c74f','#4ade80','#f97316','#3b82f6','#a855f7','#ef4444'];
+  for(let i=0;i<70;i++){const d=document.createElement('div');d.className='confetto';d.style.cssText=`left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};width:${6+Math.random()*6}px;height:${6+Math.random()*6}px;animation-duration:${2+Math.random()*2}s;animation-delay:${Math.random()*.8}s;`;wrap.appendChild(d);}
+}
+init();
+</script>
+</body>
+</html>
