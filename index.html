@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -546,13 +547,25 @@ function botTurn(){
   else{g.cells[pick.r][pick.c]='player';g.playerScore++;}
   updateScoreHUD();renderGrids();checkGameOver();
 }
-function checkGameOver(){const g=gameState;if(g.gameOver)return;if(g.playerScore+g.botScore>=TOTAL)endGame();}
+// Баг 1 fix: задержка чтобы дать время вопросу закрыться, флаг endingGame
+function checkGameOver(){
+  const g=gameState;
+  if(g.gameOver||g.endingGame)return;
+  if(g.playerScore+g.botScore>=TOTAL){
+    g.endingGame=true;
+    // Если вопрос открыт — ждём пока закроется, иначе сразу
+    const delay=g.questionActive?1400:400;
+    setTimeout(()=>endGame(),delay);
+  }
+}
 function updateScoreHUD(){document.getElementById('hud-player-score').textContent=gameState.playerScore;document.getElementById('hud-bot-score').textContent=gameState.botScore;}
 function updateCellCount(){let n=0;for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(gameState.cells[r][c]==='neutral')n++;document.getElementById('hud-timer').textContent='⬡ '+n+' sel tersisa';}
 
 async function endGame(){
   const g=gameState;if(g.gameOver)return;
   g.gameOver=true;clearInterval(g.botInterval);
+  // Закрываем панель вопроса если открыта
+  document.getElementById('question-panel').style.display='none';
   const won=g.playerScore>g.botScore;
   const pts=won?100:-10;
   if(currentUser&&currentProfile){
@@ -576,11 +589,51 @@ async function endGame(){
   document.getElementById('rs-total').textContent=currentProfile?.score||0;
   showScreen('result');
   if(won)spawnConfetti();
+  else spawnDefeat();
 }
 function spawnConfetti(){
   const wrap=document.getElementById('confetti-wrap');wrap.innerHTML='';
   const colors=['#f9c74f','#4ade80','#f97316','#3b82f6','#a855f7','#ef4444'];
   for(let i=0;i<70;i++){const d=document.createElement('div');d.className='confetto';d.style.cssText=`left:${Math.random()*100}%;background:${colors[Math.floor(Math.random()*colors.length)]};border-radius:${Math.random()>.5?'50%':'2px'};width:${6+Math.random()*6}px;height:${6+Math.random()*6}px;animation-duration:${2+Math.random()*2}s;animation-delay:${Math.random()*.8}s;`;wrap.appendChild(d);}
+}
+// Баг 1 fix: анимация поражения — падающие красные крестики
+function spawnDefeat(){
+  const wrap=document.getElementById('confetti-wrap');wrap.innerHTML='';
+  for(let i=0;i<30;i++){
+    const d=document.createElement('div');
+    d.style.cssText=`position:absolute;left:${Math.random()*100}%;font-size:${1.2+Math.random()}rem;opacity:0;animation:fall ${2+Math.random()*2}s linear ${Math.random()*0.8}s forwards;`;
+    d.textContent='💀';
+    wrap.appendChild(d);
+  }
+}
+
+// Баг 2 fix: таймаут на загрузку — если за 5 сек нет ответа, показываем auth
+async function init(){
+  // Таймаут фоллбэк
+  const loadingTimeout=setTimeout(()=>{
+    if(document.getElementById('screen-loading').classList.contains('active')){
+      showScreen('auth');
+    }
+  },5000);
+
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    clearTimeout(loadingTimeout);
+    if(session){
+      currentUser=session.user;
+      await loadProfile();
+      await loadQuestions();
+      renderAvatarPicker();
+      showScreen('main');
+    } else {
+      currentUser=null;currentProfile=null;
+      showScreen('auth');
+    }
+  });
+  const{data:{session}}=await sb.auth.getSession();
+  if(!session){
+    clearTimeout(loadingTimeout);
+    showScreen('auth');
+  }
 }
 init();
 </script>
