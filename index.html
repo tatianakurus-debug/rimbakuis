@@ -172,39 +172,97 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .btn-battle:active{transform:translateY(0) scale(.98);}
 
 /* GAME */
-#screen-game{background:linear-gradient(180deg,var(--jungle-dark) 0%,#0b2f1d 100%);}
-.game-hud{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:rgba(0,0,0,0.4);border-bottom:1px solid var(--card-border);}
-.hud-player{display:flex;align-items:center;gap:.5rem;}
-.hav{font-size:1.3rem;}
-.hname{font-weight:800;font-size:.85rem;max-width:80px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.hscore{font-family:'Fredoka One',cursive;font-size:1.3rem;}
-.hud-vs{font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--gold);}
-.hud-score-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;}
-.hud-timer{font-family:'Fredoka One',cursive;font-size:.8rem;color:var(--text-muted);}
-/* Кнопка выхода из игры */
-.btn-quit{padding:.35rem .8rem;border-radius:20px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:var(--red);font-family:'Nunito',sans-serif;font-weight:700;font-size:.75rem;cursor:pointer;transition:.2s;}
-.btn-quit:hover{background:rgba(239,68,68,0.25);}
-.game-topic-badge{text-align:center;padding:.3rem 1rem;font-size:.7rem;font-weight:800;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;background:rgba(249,199,79,0.06);border-bottom:1px solid rgba(249,199,79,0.1);}
-.enemy-zone{background:linear-gradient(180deg,rgba(239,68,68,0.15),transparent);border-bottom:1px solid rgba(239,68,68,0.2);padding:.5rem .5rem .2rem;}
-.zone-label{font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;text-align:center;margin-bottom:.4rem;color:rgba(239,68,68,0.7);}
-/* ── КРУПНАЯ СЕТКА на десктопе ── */
-.grid-board{display:flex;flex-direction:column;align-items:center;padding:.2rem;}
-.board-row{display:flex;justify-content:center;}
-.cell{width:62px;height:62px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;transition:.15s;user-select:none;}
-.cell-inner{width:46px;height:46px;transform:rotate(45deg);border-radius:5px;background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;transition:.2s;position:relative;overflow:hidden;}
-.cell:hover .cell-inner{border-color:var(--gold);background:rgba(249,199,79,0.18);transform:rotate(45deg) scale(1.12);}
-.cell .cell-content{transform:rotate(-45deg);font-size:1.2rem;position:absolute;}
-.cell.player .cell-inner{background:rgba(74,222,128,0.3);border-color:var(--leaf);}
-.cell.enemy .cell-inner{background:rgba(239,68,68,0.3);border-color:var(--red);}
-.cell.locked{cursor:default;opacity:.65;}
-.cell.locked:hover .cell-inner{transform:rotate(45deg);border-color:rgba(255,255,255,0.15);}
-@media(min-width:600px){
-  .cell{width:80px;height:80px;}
-  .cell-inner{width:60px;height:60px;}
-  .cell .cell-content{font-size:1.5rem;}
+#screen-game{
+  background:linear-gradient(180deg,#071a10 0%,#0a2218 40%,#0f3d28 100%);
+  display:flex;flex-direction:column;
 }
-.player-zone{background:linear-gradient(180deg,transparent,rgba(74,222,128,0.12));border-top:1px solid rgba(74,222,128,0.2);padding:.2rem .5rem .5rem;}
-.zone-label.player-label{color:rgba(74,222,128,0.7);}
+/* HUD */
+.game-hud{display:flex;align-items:center;justify-content:space-between;padding:.55rem .9rem;background:rgba(0,0,0,0.5);border-bottom:1px solid var(--card-border);}
+.hud-player{display:flex;align-items:center;gap:.45rem;}
+.hav{font-size:1.1rem;}
+.hname{font-weight:800;font-size:.8rem;max-width:72px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.hscore{font-family:'Fredoka One',cursive;font-size:1.2rem;}
+.hud-vs{font-family:'Fredoka One',cursive;font-size:1rem;color:var(--gold);}
+.hud-score-wrap{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.hud-timer{font-family:'Fredoka One',cursive;font-size:.75rem;color:var(--text-muted);}
+.btn-quit{padding:.3rem .7rem;border-radius:20px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.1);color:var(--red);font-family:'Nunito',sans-serif;font-weight:700;font-size:.7rem;cursor:pointer;transition:.2s;}
+.btn-quit:hover{background:rgba(239,68,68,0.25);}
+.game-topic-badge{text-align:center;padding:.25rem 1rem;font-size:.65rem;font-weight:800;color:var(--gold);letter-spacing:.5px;text-transform:uppercase;background:rgba(249,199,79,0.05);border-bottom:1px solid rgba(249,199,79,0.08);}
+
+/* ── ВЕРТИКАЛЬНОЕ ПОЛЕ ── */
+.game-arena{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:.5rem .5rem 0;
+  gap:0;
+}
+
+/* Зона бота — сверху, чёрно-белая */
+.enemy-banner{
+  display:flex;align-items:center;justify-content:center;gap:.4rem;
+  padding:.35rem .8rem;
+  background:rgba(255,255,255,0.04);
+  border-radius:12px 12px 0 0;
+  border:1px solid rgba(255,255,255,0.08);
+  border-bottom:none;
+  width:100%;max-width:420px;
+}
+.enemy-banner .jungle-deco{font-size:1.3rem;filter:grayscale(1) brightness(.7);}
+.enemy-banner .bot-info{display:flex;flex-direction:column;align-items:center;}
+.enemy-banner .bot-name{font-weight:800;font-size:.8rem;color:rgba(255,255,255,0.6);}
+.enemy-banner .bot-score{font-family:'Fredoka One',cursive;font-size:1.1rem;color:rgba(255,255,255,0.5);}
+
+/* Сетка шестигранников */
+.hex-board{
+  display:flex;flex-direction:column;
+  align-items:center;
+  gap:3px;
+  padding:.4rem .6rem;
+  background:rgba(0,0,0,0.25);
+  border-left:1px solid rgba(255,255,255,0.07);
+  border-right:1px solid rgba(255,255,255,0.07);
+  width:100%;max-width:420px;
+}
+.hex-row{display:flex;justify-content:center;gap:3px;}
+/* Нечётные строки смещены вправо на полгексагона */
+.hex-row.offset{margin-left:38px;}
+@media(min-width:480px){.hex-row.offset{margin-left:46px;}}
+
+/* Шестигранник через clip-path */
+.hex-cell{
+  width:68px;height:76px;
+  clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+  background:rgba(255,255,255,0.07);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:.18s;
+  position:relative;font-size:1.3rem;
+  user-select:none;
+}
+@media(min-width:480px){
+  .hex-cell{width:82px;height:92px;}
+}
+.hex-cell:hover{background:rgba(249,199,79,0.25);transform:scale(1.07);}
+.hex-cell.player{background:rgba(74,222,128,0.35);}
+.hex-cell.player:hover{background:rgba(74,222,128,0.5);}
+.hex-cell.enemy{background:rgba(120,120,120,0.35);}
+.hex-cell.enemy:hover{background:rgba(120,120,120,0.5);}
+.hex-cell.locked{cursor:default;}
+.hex-cell.locked:hover{transform:none;}
+
+/* Зона игрока — снизу, цветная */
+.player-banner{
+  display:flex;align-items:center;justify-content:center;gap:.4rem;
+  padding:.35rem .8rem;
+  background:rgba(74,222,128,0.07);
+  border-radius:0 0 12px 12px;
+  border:1px solid rgba(74,222,128,0.15);
+  border-top:none;
+  width:100%;max-width:420px;
+}
+.player-banner .jungle-deco{font-size:1.3rem;}
+.player-banner .player-info{display:flex;flex-direction:column;align-items:center;}
+.player-banner .player-name{font-weight:800;font-size:.8rem;color:var(--leaf);}
+.player-banner .player-score-disp{font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--leaf);}
 
 /* QUESTION */
 .question-panel{margin:.6rem .75rem;background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;overflow:hidden;}
@@ -314,13 +372,13 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
     </div>
   </div>
   <div class="nav-tabs">
-    <button class="nav-tab active" onclick="switchTab('profil')"><span class="tab-icon">👤</span>Profil</button>
+    <button class="nav-tab" onclick="switchTab('profil')"><span class="tab-icon">👤</span>Profil</button>
     <button class="nav-tab" onclick="switchTab('peringkat')"><span class="tab-icon">🏆</span>Peringkat</button>
-    <button class="nav-tab" onclick="switchTab('pertarungan')"><span class="tab-icon">⚔️</span>Pertarungan</button>
+    <button class="nav-tab active" onclick="switchTab('pertarungan')"><span class="tab-icon">⚔️</span>Pertarungan</button>
   </div>
 
   <!-- PROFILE -->
-  <div class="tab-content active" id="tab-profil">
+  <div class="tab-content" id="tab-profil">
     <div class="profile-hero">
       <div class="avatar-lg" id="profile-avatar-lg">🦁</div>
       <div class="profile-info">
@@ -341,7 +399,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
       <div class="avatar-picker-label">Pilih Avatar</div>
       <div class="avatar-grid" id="avatar-grid"></div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">Keluar dari Akun</button>
+    <button class="logout-btn" id="logout-btn">Keluar dari Akun</button>
   </div>
 
   <!-- RATING -->
@@ -352,7 +410,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
   </div>
 
   <!-- BATTLE -->
-  <div class="tab-content" id="tab-pertarungan">
+  <div class="tab-content active" id="tab-pertarungan">
     <div class="battle-intro">
       <h2>⚔️ Mulai Pertarungan!</h2>
       <p>Pilih tema dan kesulitan, lalu taklukkan rimba!</p>
@@ -397,21 +455,37 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
     </div>
   </div>
   <div class="game-topic-badge" id="game-topic-badge">🌴 Semua Tema</div>
-  <div class="enemy-zone">
-    <div class="zone-label">🤖 WILAYAH LAWAN</div>
-    <div class="grid-board" id="enemy-grid"></div>
-  </div>
-  <div class="question-panel" id="question-panel" style="display:none">
-    <div class="q-top">
-      <span class="q-badge" id="q-badge">Pertanyaan</span>
-      <span class="q-cell-hint" id="q-cell-hint"></span>
+  <div class="game-arena">
+    <!-- Зона бота — чёрно-белая -->
+    <div class="enemy-banner">
+      <span class="jungle-deco">🌴🌴🦎🌴</span>
+      <div class="bot-info">
+        <span class="bot-name" id="hud-bot-name2">Lawan</span>
+        <span class="bot-score" id="hud-bot-score2">0</span>
+      </div>
     </div>
-    <div class="q-text" id="q-text">Memuat...</div>
-    <div class="answers-grid" id="answers-grid"></div>
-  </div>
-  <div class="player-zone">
-    <div class="zone-label player-label">🌿 WILAYAHMU</div>
-    <div class="grid-board" id="player-grid"></div>
+
+    <!-- Шестигранное поле -->
+    <div class="hex-board" id="hex-board"></div>
+
+    <!-- Панель вопроса -->
+    <div class="question-panel" id="question-panel" style="display:none;width:100%;max-width:420px;">
+      <div class="q-top">
+        <span class="q-badge" id="q-badge">Pertanyaan</span>
+        <span class="q-cell-hint" id="q-cell-hint"></span>
+      </div>
+      <div class="q-text" id="q-text">Memuat...</div>
+      <div class="answers-grid" id="answers-grid"></div>
+    </div>
+
+    <!-- Зона игрока — цветная -->
+    <div class="player-banner">
+      <div class="player-info">
+        <span class="player-name" id="hud-player-name2">Kamu</span>
+        <span class="player-score-disp" id="hud-player-score2">0</span>
+      </div>
+      <span class="jungle-deco">🌴🐯🌴🌴</span>
+    </div>
   </div>
 </div>
 
@@ -652,7 +726,7 @@ function showScreen(s){
   document.querySelectorAll('.screen').forEach(sc=>sc.classList.remove('active'));
   document.getElementById('screen-'+s).classList.add('active');
 }
-function showMain(){loadLeaderboard();showScreen('main');switchTab('profil');}
+function showMain(){loadLeaderboard();showScreen('main');switchTab('pertarungan');}
 function switchTab(t){
   document.querySelectorAll('.nav-tab').forEach((b,i)=>b.classList.toggle('active',['profil','peringkat','pertarungan'][i]===t));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -663,6 +737,10 @@ function switchTab(t){
 
 // Выбор темы
 document.addEventListener('DOMContentLoaded',()=>{
+  // Logout button
+  const logoutBtn=document.getElementById('logout-btn');
+  if(logoutBtn)logoutBtn.addEventListener('click',doLogout);
+  
   document.querySelectorAll('.topic-card').forEach(c=>{
     c.addEventListener('click',()=>{
       document.querySelectorAll('.topic-card').forEach(x=>x.classList.remove('selected'));
@@ -710,7 +788,7 @@ async function startGame(){
   };
 
   document.getElementById('hud-bot-name').textContent=botNick;
-  document.getElementById('hud-bot-av').textContent=botAv;
+  document.getElementById('hud-bot-av').textContent='👤'; // Бот выглядит как человек
   document.getElementById('hud-player-name').textContent=currentProfile?.nick||'Kamu';
   document.getElementById('hud-player-av').textContent=currentProfile?.avatar||'🦁';
   const topicLabel=(TOPIC_ICONS[topic]||'🌴')+' '+(topic==='all'?'Semua Tema':topic);
@@ -732,28 +810,34 @@ function quitGame(){
 }
 
 function renderGrids(){
-  renderZone('enemy-grid',[0,1],gameState.cells);
-  renderZone('player-grid',[1,2],gameState.cells);
+  renderHexBoard();
   updateCellCount();
 }
-function renderZone(id,rows,cells){
-  const cont=document.getElementById(id);cont.innerHTML='';
-  rows.forEach(r=>{
-    const row=document.createElement('div');row.className='board-row';
+function renderHexBoard(){
+  const board=document.getElementById('hex-board');
+  if(!board)return;
+  board.innerHTML='';
+  const cells=gameState.cells;
+  // COLS=5 rows, ROWS=3 columns → отображаем как 3 строки по 5
+  // Строки 0 и 2 — смещённые (offset)
+  for(let r=0;r<ROWS;r++){
+    const row=document.createElement('div');
+    row.className='hex-row'+(r%2===1?' offset':'');
     for(let c=0;c<COLS;c++){
-      const cell=document.createElement('div');cell.className='cell';
       const owner=cells[r][c];
-      if(owner!=='neutral')cell.classList.add(owner);
-      const inner=document.createElement('div');inner.className='cell-inner';
-      const content=document.createElement('span');content.className='cell-content';
-      content.textContent=owner==='player'?'🌿':owner==='enemy'?'🔥':'🌑';
-      inner.appendChild(content);cell.appendChild(inner);
-      if(owner==='neutral')cell.addEventListener('click',()=>onCellClick(r,c));
-      else cell.classList.add('locked');
+      const cell=document.createElement('div');
+      cell.className='hex-cell'+(owner!=='neutral'?' '+owner+' locked':'');
+      // Эмодзи в ячейке
+      if(owner==='player') cell.textContent='🌿';
+      else if(owner==='enemy') cell.textContent='⚔️';
+      else cell.textContent='';
+      if(owner==='neutral'){
+        cell.addEventListener('click',()=>onCellClick(r,c));
+      }
       row.appendChild(cell);
     }
-    cont.appendChild(row);
-  });
+    board.appendChild(row);
+  }
 }
 function onCellClick(r,c){
   const g=gameState;
@@ -812,8 +896,18 @@ function checkGameOver(){
   }
 }
 function updateScoreHUD(){
-  document.getElementById('hud-player-score').textContent=gameState.playerScore;
-  document.getElementById('hud-bot-score').textContent=gameState.botScore;
+  const ps=gameState.playerScore, bs=gameState.botScore;
+  document.getElementById('hud-player-score').textContent=ps;
+  document.getElementById('hud-bot-score').textContent=bs;
+  // Новые баннеры
+  const ps2=document.getElementById('hud-player-score2');
+  const bs2=document.getElementById('hud-bot-score2');
+  const pn2=document.getElementById('hud-player-name2');
+  const bn2=document.getElementById('hud-bot-name2');
+  if(ps2)ps2.textContent=ps+' sel';
+  if(bs2)bs2.textContent=bs+' sel';
+  if(pn2)pn2.textContent=currentProfile?.nick||'Kamu';
+  if(bn2)bn2.textContent=gameState.botNick||'Lawan';
 }
 function updateCellCount(){
   let n=0;
