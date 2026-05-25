@@ -242,6 +242,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:100;}
 .confetto{position:absolute;width:8px;height:8px;opacity:0;animation:fall linear forwards;}
 @keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+@keyframes fall-defeat{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}80%{opacity:1;}100%{transform:translateY(105vh) rotate(540deg);opacity:0;}}
 
 /* STATUS BAR — скрыт полностью, мониторинг только в консоль */
 #status-bar{display:none!important;}
@@ -681,7 +682,7 @@ async function startGame(){
   const topic=document.querySelector('.topic-card.selected')?.dataset.topic||'all';
   // Ошибки бота: mudah=4, sedang=3, sulit=2 из 15 ячеек
   const botMistakes=diff==='mudah'?4:diff==='sedang'?3:2;
-  const botAccuracy=0; // не используем, считаем через счётчик
+  const botAccuracy=0; // не используется напрямую — используем botMistakesLeft
   const botSpeed=diff==='mudah'?4500:diff==='sedang'?3500:2500;
 
   // Фильтруем по теме и сложности
@@ -825,13 +826,21 @@ async function endGame(){
   const won=g.playerScore>g.botScore;
   const pts=won?100:-10;
   if(currentUser&&currentProfile){
-    const newScore=Math.max(0,currentProfile.score+pts);
-    const newWins=currentProfile.wins+(won?1:0);
-    const newLosses=currentProfile.losses+(won?0:1);
-    await sb.from('profiles').update({score:newScore,wins:newWins,losses:newLosses}).eq('id',currentUser.id);
-    await sb.from('game_results').insert({player_id:currentUser.id,won,player_score:g.playerScore,bot_score:g.botScore,correct_answers:g.correctCount,wrong_answers:g.wrongCount});
-    currentProfile.score=newScore;currentProfile.wins=newWins;currentProfile.losses=newLosses;
-    renderProfile();
+    try{
+      const newScore=Math.max(0,currentProfile.score+pts);
+      const newWins=currentProfile.wins+(won?1:0);
+      const newLosses=currentProfile.losses+(won?0:1);
+      const [upd,ins]=await Promise.all([
+        sb.from('profiles').update({score:newScore,wins:newWins,losses:newLosses}).eq('id',currentUser.id),
+        sb.from('game_results').insert({player_id:currentUser.id,won,player_score:g.playerScore,bot_score:g.botScore,correct_answers:g.correctCount,wrong_answers:g.wrongCount})
+      ]);
+      if(upd.error)console.error('[RimbaKuis] score update error',upd.error);
+      else{currentProfile.score=newScore;currentProfile.wins=newWins;currentProfile.losses=newLosses;}
+      renderProfile();
+    }catch(e){
+      console.error('[RimbaKuis] endGame DB error',e);
+      if(typeof Sentry!=='undefined')Sentry.captureException(e);
+    }
   }
   document.getElementById('result-icon').textContent=won?'🏆':'😔';
   document.getElementById('result-title').textContent=won?'Kamu Menang!':'Kamu Kalah...';
@@ -855,10 +864,15 @@ function spawnConfetti(){
 }
 function spawnDefeat(){
   const wrap=document.getElementById('confetti-wrap');wrap.innerHTML='';
-  for(let i=0;i<30;i++){
+  const emojis=['💀','😭','💔','😢','☠️'];
+  for(let i=0;i<35;i++){
     const d=document.createElement('div');
-    d.style.cssText=`position:absolute;left:${Math.random()*100}%;font-size:${1.2+Math.random()}rem;opacity:0;animation:fall ${2+Math.random()*2}s linear ${Math.random()*0.8}s forwards;`;
-    d.textContent='💀';wrap.appendChild(d);
+    const delay=Math.random()*1.2;
+    const dur=2+Math.random()*2;
+    // НЕ ставим opacity:0 — keyframe сам управляет opacity
+    d.style.cssText=`position:absolute;left:${Math.random()*100}%;font-size:${1.1+Math.random()*1.2}rem;animation:fall-defeat ${dur}s linear ${delay}s both;`;
+    d.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    wrap.appendChild(d);
   }
 }
 
