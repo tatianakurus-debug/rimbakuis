@@ -148,21 +148,28 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .battle-intro h2{font-family:'Fredoka One',cursive;font-size:2rem;margin-bottom:.5rem;}
 .battle-intro p{color:var(--text-muted);font-size:.95rem;margin-bottom:1.25rem;}
 .section-label{font-size:.8rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.6rem;text-align:left;}
-.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.25rem;}
-.topic-card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:.75rem .6rem;cursor:pointer;transition:.2s;text-align:center;}
-.topic-card.selected{border-color:var(--gold);background:rgba(249,199,79,0.1);}
-.topic-card:hover{border-color:var(--gold);}
-.topic-icon{font-size:1.5rem;margin-bottom:.25rem;}
-.topic-name{font-weight:800;font-size:.8rem;line-height:1.2;}
-.difficulty-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1.25rem;}
+.topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.5rem;}
+@media(max-width:540px){.topic-grid{grid-template-columns:repeat(2,1fr);}}
+.topic-card{position:relative;background:linear-gradient(160deg,rgba(15,61,40,0.9),rgba(10,34,24,0.95));border:2px solid rgba(74,222,128,0.2);border-radius:14px;padding:.85rem .4rem .65rem;cursor:pointer;transition:.25s;text-align:center;overflow:hidden;}
+.topic-card::before{content:'🌿';position:absolute;top:-5px;left:-3px;font-size:1.2rem;opacity:0.3;transform:rotate(-30deg);pointer-events:none;}
+.topic-card::after{content:'🌴';position:absolute;bottom:-5px;right:-3px;font-size:1rem;opacity:0.25;transform:rotate(15deg);pointer-events:none;}
+.topic-card.selected{border-color:var(--gold);background:linear-gradient(160deg,rgba(26,107,60,0.7),rgba(15,61,40,0.9));box-shadow:0 0 16px rgba(249,199,79,0.3);}
+.topic-card:hover{border-color:var(--leaf);background:linear-gradient(160deg,rgba(20,80,48,0.8),rgba(12,42,28,0.95));}
+.topic-icon{font-size:1.6rem;margin-bottom:.3rem;display:block;}
+.topic-name{font-weight:800;font-size:.72rem;line-height:1.2;color:var(--white);}
+.difficulty-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1.5rem;}
 .diff-card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:1rem .75rem;cursor:pointer;transition:.2s;text-align:center;}
 .diff-card.selected{border-color:var(--leaf);background:rgba(74,222,128,0.1);}
 .diff-card:hover{border-color:var(--leaf);}
 .diff-icon{font-size:1.8rem;margin-bottom:.4rem;}
 .diff-name{font-weight:800;font-size:.85rem;}
 .diff-desc{font-size:.7rem;color:var(--text-muted);margin-top:.2rem;}
-.btn-battle{display:block;width:100%;padding:1.1rem;border-radius:var(--radius);border:none;font-family:'Fredoka One',cursive;font-size:1.4rem;cursor:pointer;background:linear-gradient(135deg,#f97316,#ef4444);color:var(--white);box-shadow:0 6px 20px rgba(239,68,68,0.4);letter-spacing:.5px;transition:.2s;}
-.btn-battle:hover{transform:translateY(-2px);}
+/* Кнопка Pertarungan — большая с переливанием */
+@keyframes shimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes pulse-battle{0%,100%{box-shadow:0 6px 25px rgba(239,68,68,0.5),0 0 0 0 rgba(249,199,79,0.4);}50%{box-shadow:0 8px 35px rgba(239,68,68,0.7),0 0 0 10px rgba(249,199,79,0);}}
+.btn-battle{display:block;width:100%;padding:1.4rem;border-radius:var(--radius);border:none;font-family:'Fredoka One',cursive;font-size:1.8rem;cursor:pointer;letter-spacing:.5px;background:linear-gradient(270deg,#f97316,#ef4444,#f9c74f,#ef4444,#f97316);background-size:300% 300%;color:var(--white);animation:shimmer 3s ease infinite,pulse-battle 2s ease infinite;transition:transform .15s;margin-top:.25rem;}
+.btn-battle:hover{transform:translateY(-3px) scale(1.02);}
+.btn-battle:active{transform:translateY(0) scale(.98);}
 
 /* GAME */
 #screen-game{background:linear-gradient(180deg,var(--jungle-dark) 0%,#0b2f1d 100%);}
@@ -236,10 +243,8 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .confetto{position:absolute;width:8px;height:8px;opacity:0;animation:fall linear forwards;}
 @keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;}}
 
-/* STATUS BAR (runtime monitor) */
-#status-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;font-size:.7rem;font-weight:700;text-align:center;padding:.25rem;display:none;letter-spacing:.5px;}
-#status-bar.ok{background:rgba(74,222,128,0.15);color:var(--leaf);border-top:1px solid rgba(74,222,128,0.2);}
-#status-bar.error{background:rgba(239,68,68,0.2);color:#fca5a5;border-top:1px solid rgba(239,68,68,0.3);display:block!important;}
+/* STATUS BAR — скрыт полностью, мониторинг только в консоль */
+#status-bar{display:none!important;}
 </style>
 </head>
 <body>
@@ -674,7 +679,9 @@ async function startGame(){
   if(gameState?.botInterval)clearInterval(gameState.botInterval);
   const diff=document.querySelector('.diff-card.selected')?.dataset.diff||'mudah';
   const topic=document.querySelector('.topic-card.selected')?.dataset.topic||'all';
-  const botAccuracy=diff==='mudah'?0.45:diff==='sedang'?0.6:0.75;
+  // Ошибки бота: mudah=4, sedang=3, sulit=2 из 15 ячеек
+  const botMistakes=diff==='mudah'?4:diff==='sedang'?3:2;
+  const botAccuracy=0; // не используем, считаем через счётчик
   const botSpeed=diff==='mudah'?4500:diff==='sedang'?3500:2500;
 
   // Фильтруем по теме и сложности
@@ -696,7 +703,7 @@ async function startGame(){
     playerScore:0,botScore:0,correctCount:0,wrongCount:0,
     selectedCell:null,questionActive:false,
     botNick,botAv,usedIds:[],gameOver:false,endingGame:false,
-    botAccuracy,botInterval:null,pool,diff,topic
+    botMistakesLeft:botMistakes,botInterval:null,pool,diff,topic
   };
 
   document.getElementById('hud-bot-name').textContent=botNick;
@@ -783,8 +790,14 @@ function botTurn(){
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g.cells[r][c]==='neutral')neutral.push({r,c});
   if(!neutral.length){checkGameOver();return;}
   const pick=neutral[Math.floor(Math.random()*neutral.length)];
-  if(Math.random()<g.botAccuracy){g.cells[pick.r][pick.c]='enemy';g.botScore++;}
-  else{g.cells[pick.r][pick.c]='player';g.playerScore++;}
+  // Бот ошибается ровно botMistakes раз за игру — не случайно
+  if(g.botMistakesLeft>0&&Math.random()<(g.botMistakesLeft/(neutral.length||1))){
+    // Бот ошибается — ячейка идёт игроку
+    g.cells[pick.r][pick.c]='player';g.playerScore++;
+    g.botMistakesLeft--;
+  } else {
+    g.cells[pick.r][pick.c]='enemy';g.botScore++;
+  }
   updateScoreHUD();renderGrids();checkGameOver();
 }
 function checkGameOver(){
