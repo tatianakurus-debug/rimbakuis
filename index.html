@@ -483,30 +483,64 @@ window.addEventListener('hashchange',handleHash);
 
 // ==================== INIT ====================
 async function init(){
-  const loadingTimeout=setTimeout(()=>{
-    if(document.getElementById('screen-loading').classList.contains('active')){
+  // Убираем # из URL сразу при загрузке
+  if(window.location.hash==='#'){
+    history.replaceState(null,'',window.location.pathname);
+  }
+
+  // Жёсткий таймаут — через 4 сек всегда показываем auth
+  const hardTimeout=setTimeout(()=>{
+    console.warn('[RimbaKuis] Hard timeout — showing auth');
+    showScreen('auth');
+  },4000);
+
+  try{
+    // Сначала проверяем сессию напрямую
+    const{data:{session},error}=await sb.auth.getSession();
+
+    if(error){
+      console.error('[RimbaKuis] getSession error',error);
+      clearTimeout(hardTimeout);
+      showScreen('auth');
+      return;
+    }
+
+    if(session && session.user){
+      // Сессия есть — грузим данные и показываем main
+      currentUser=session.user;
+      await Promise.all([loadProfile(),loadQuestions()]);
+      renderAvatarPicker();
+      clearTimeout(hardTimeout);
+      showScreen('main');
+      track('session_restore',{method:session.user.app_metadata?.provider||'email'});
+    } else {
+      // Сессии нет — сразу на auth
+      clearTimeout(hardTimeout);
       showScreen('auth');
     }
-  },5000);
+  } catch(e){
+    console.error('[RimbaKuis] init error',e);
+    clearTimeout(hardTimeout);
+    showScreen('auth');
+    if(typeof Sentry!=='undefined')Sentry.captureException(e);
+  }
 
+  // onAuthStateChange только для живых событий (логин/логаут)
+  // НЕ используем для первоначальной загрузки
   sb.auth.onAuthStateChange(async(event,session)=>{
-    clearTimeout(loadingTimeout);
-    if(session){
+    if(event==='SIGNED_IN' && session){
       currentUser=session.user;
-      await loadProfile();
-      await loadQuestions();
+      await Promise.all([loadProfile(),loadQuestions()]);
       renderAvatarPicker();
-      // Убираем # из URL после Google OAuth redirect
-      if(window.location.hash==='#'){history.replaceState(null,'',window.location.pathname);}
       showScreen('main');
       track('login',{method:session.user.app_metadata?.provider||'email'});
-    } else {
+    }
+    if(event==='SIGNED_OUT'){
       currentUser=null;currentProfile=null;
       showScreen('auth');
     }
   });
-  const{data:{session}}=await sb.auth.getSession();
-  if(!session){clearTimeout(loadingTimeout);showScreen('auth');}
+
   runtimePing();
 }
 
