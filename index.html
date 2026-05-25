@@ -172,10 +172,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .btn-battle:active{transform:translateY(0) scale(.98);}
 
 /* GAME */
-#screen-game{
-  background:linear-gradient(180deg,#071a10 0%,#0a2218 40%,#0f3d28 100%);
-  display:flex;flex-direction:column;
-}
+#screen-game{background:linear-gradient(180deg,#071a10 0%,#0a2218 40%,#0f3d28 100%);}
 /* HUD */
 .game-hud{display:flex;align-items:center;justify-content:space-between;padding:.55rem .9rem;background:rgba(0,0,0,0.5);border-bottom:1px solid var(--card-border);}
 .hud-player{display:flex;align-items:center;gap:.45rem;}
@@ -195,6 +192,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
   align-items:center;justify-content:center;
   padding:.5rem .5rem 0;
   gap:0;
+  overflow-y:auto;
 }
 
 /* Зона бота — сверху, чёрно-белая */
@@ -809,9 +807,13 @@ async function startGame(){
   document.getElementById('hud-player-av').textContent=currentProfile?.avatar||'🦁';
   const topicLabel=(TOPIC_ICONS[topic]||'🌴')+' '+(topic==='all'?'Semua Tema':topic);
   document.getElementById('game-topic-badge').textContent=topicLabel;
-  updateScoreHUD();renderGrids();
   document.getElementById('question-panel').style.display='none';
+  // Сначала показываем экран — потом рендерим поле (иначе hex-board скрыт и не рисуется)
   showScreen('game');
+  requestAnimationFrame(()=>{
+    renderGrids();
+    updateScoreHUD();
+  });
   gameState.botInterval=setInterval(botTurn,botSpeed);
   track('game_start',{diff,topic});
 }
