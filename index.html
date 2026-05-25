@@ -268,13 +268,28 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .player-banner .player-name{font-weight:800;font-size:1.05rem;color:var(--leaf);}
 .player-banner .player-score-disp{font-family:'Fredoka One',cursive;font-size:1.4rem;color:var(--leaf);}
 
-/* QUESTION */
-.question-panel{margin:.6rem .75rem;background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;overflow:hidden;}
-.q-top{padding:.65rem 1rem .4rem;display:flex;align-items:center;justify-content:space-between;}
+/* QUESTION — поверх баннера игрока как оверлей */
+.question-panel{
+  position:fixed;
+  bottom:0;left:0;right:0;
+  z-index:50;
+  background:linear-gradient(180deg,rgba(10,34,24,0.98),rgba(15,61,40,0.99));
+  border-top:2px solid var(--leaf);
+  border-radius:20px 20px 0 0;
+  overflow:hidden;
+  max-height:70vh;
+  overflow-y:auto;
+}
+.q-handle{width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:4px;margin:.6rem auto .2rem;}
+.q-top{padding:.5rem 1rem .3rem;display:flex;align-items:center;justify-content:space-between;}
 .q-badge{background:linear-gradient(135deg,var(--jungle-light),var(--leaf));color:var(--white);padding:.2rem .7rem;border-radius:20px;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
 .q-cell-hint{font-size:.75rem;color:var(--text-muted);}
-.q-text{padding:.2rem 1rem .65rem;font-size:.95rem;font-weight:600;line-height:1.4;}
-.answers-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding:0 .75rem .75rem;}
+.q-text{padding:.2rem 1rem .6rem;font-size:1.05rem;font-weight:700;line-height:1.45;}
+.answers-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;padding:0 1rem 1.2rem;}
+@media(min-width:600px){
+  .answers-grid{grid-template-columns:1fr 1fr;gap:.75rem;padding:0 1.5rem 1.5rem;}
+  .q-text{font-size:1.15rem;padding:.2rem 1.5rem .7rem;}
+}
 .answer-btn{padding:.65rem .5rem;border-radius:var(--radius-sm);border:1.5px solid var(--card-border);background:rgba(0,0,0,0.2);color:var(--white);font-family:'Nunito',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer;transition:.15s;text-align:left;line-height:1.3;}
 .answer-btn:hover{border-color:var(--gold);background:rgba(249,199,79,0.1);}
 .answer-btn.correct{border-color:var(--leaf);background:rgba(74,222,128,0.2);color:var(--leaf);pointer-events:none;}
@@ -480,8 +495,9 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
     <!-- Шестигранное поле -->
     <div class="hex-board" id="hex-board"></div>
 
-    <!-- Панель вопроса -->
-    <div class="question-panel" id="question-panel" style="display:none;width:100%;max-width:560px;">
+    <!-- Панель вопроса — поверх всего как bottom sheet -->
+    <div class="question-panel" id="question-panel" style="display:none">
+      <div class="q-handle"></div>
       <div class="q-top">
         <span class="q-badge" id="q-badge">Pertanyaan</span>
         <span class="q-cell-hint" id="q-cell-hint"></span>
