@@ -599,73 +599,72 @@ async function init(){
     history.replaceState(null,'',window.location.pathname);
   }
 
-  // Проверяем — есть ли в URL OAuth токен от Google
-  const isOAuthRedirect = window.location.hash.includes('access_token') ||
-                          window.location.hash.includes('refresh_token') ||
-                          window.location.search.includes('code=');
+  const isOAuthRedirect=window.location.hash.includes('access_token')||
+                        window.location.hash.includes('refresh_token')||
+                        window.location.search.includes('code=');
 
-  // Если OAuth redirect — даём больше времени на обработку токена
-  const timeoutMs = isOAuthRedirect ? 12000 : 5000;
+  // Флаг чтобы не обрабатывать дважды
+  let handled=false;
 
-  let hardTimeoutFired = false;
-  const hardTimeout = setTimeout(()=>{
-    hardTimeoutFired = true;
-    console.warn('[RimbaKuis] Hard timeout — showing auth');
-    showScreen('auth');
-  }, timeoutMs);
-
-  // onAuthStateChange ловит ВСЕ события включая Google OAuth redirect
-  sb.auth.onAuthStateChange(async(event, session)=>{
-    if(event==='SIGNED_IN' && session){
-      clearTimeout(hardTimeout);
-      if(hardTimeoutFired) return; // уже показали auth — не перебиваем
+  async function onSession(session){
+    if(handled)return;
+    handled=true;
+    clearTimeout(hardTimeout);
+    if(session&&session.user){
       currentUser=session.user;
-      await Promise.all([loadProfile(), loadQuestions()]);
-      renderAvatarPicker();
+      try{
+        await Promise.all([loadProfile(),loadQuestions()]);
+        renderAvatarPicker();
+      }catch(e){console.error('[RimbaKuis] load error',e);}
       showScreen('main');
       track('login',{method:session.user.app_metadata?.provider||'email'});
-    }
-    if(event==='SIGNED_OUT'){
-      currentUser=null; currentProfile=null;
+    } else {
       showScreen('auth');
     }
-    if(event==='TOKEN_REFRESHED' && session && !currentUser){
-      clearTimeout(hardTimeout);
-      currentUser=session.user;
-      await Promise.all([loadProfile(), loadQuestions()]);
-      renderAvatarPicker();
-      showScreen('main');
+  }
+
+  // ВАЖНО: сначала подписываемся, потом делаем getSession
+  // Иначе Google OAuth SIGNED_IN может прийти до подписки и потеряться
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
+      await onSession(session);
+    }
+    if(event==='SIGNED_OUT'){
+      handled=false;
+      currentUser=null;currentProfile=null;
+      showScreen('auth');
     }
   });
 
-  try{
-    // Проверяем существующую сессию
-    const{data:{session}, error}=await sb.auth.getSession();
-    if(error){
-      console.error('[RimbaKuis] getSession error', error);
-      clearTimeout(hardTimeout);
+  // Таймаут — дольше если OAuth redirect
+  const timeoutMs=isOAuthRedirect?15000:6000;
+  const hardTimeout=setTimeout(()=>{
+    if(!handled){
+      console.warn('[RimbaKuis] Timeout — showing auth');
+      handled=true;
       showScreen('auth');
+    }
+  },timeoutMs);
+
+  // Проверяем существующую сессию
+  try{
+    const{data:{session},error}=await sb.auth.getSession();
+    if(error){
+      console.error('[RimbaKuis] getSession error',error);
+      await onSession(null);
       return;
     }
-    if(session && session.user){
-      // Сессия уже есть (не OAuth redirect) — грузим сразу
-      clearTimeout(hardTimeout);
-      currentUser=session.user;
-      await Promise.all([loadProfile(), loadQuestions()]);
-      renderAvatarPicker();
-      showScreen('main');
-      track('session_restore',{method:session.user.app_metadata?.provider||'email'});
-    } else if(!isOAuthRedirect){
-      // Нет сессии и не OAuth redirect — сразу на auth
-      clearTimeout(hardTimeout);
-      showScreen('auth');
+    // Если сессия уже есть (не OAuth redirect) — заходим сразу
+    if(session&&session.user&&!isOAuthRedirect){
+      await onSession(session);
+    } else if(!session&&!isOAuthRedirect){
+      // Нет сессии, не OAuth — сразу на auth
+      await onSession(null);
     }
-    // Если isOAuthRedirect — ждём onAuthStateChange с SIGNED_IN
-  } catch(e){
-    console.error('[RimbaKuis] init error', e);
-    clearTimeout(hardTimeout);
-    showScreen('auth');
-    if(typeof Sentry!=='undefined')Sentry.captureException(e);
+    // Если isOAuthRedirect — ждём SIGNED_IN от onAuthStateChange выше
+  }catch(e){
+    console.error('[RimbaKuis] init error',e);
+    await onSession(null);
   }
 
   runtimePing();
