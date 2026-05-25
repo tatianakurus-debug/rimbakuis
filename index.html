@@ -594,16 +594,11 @@ window.addEventListener('hashchange',handleHash);
 
 // ==================== INIT ====================
 async function init(){
-  // Убираем только чистый # из URL, но НЕ трогаем OAuth токены в hash
+  // Чистим лишний # если есть
   if(window.location.hash==='#'){
     history.replaceState(null,'',window.location.pathname);
   }
 
-  const isOAuthRedirect=window.location.hash.includes('access_token')||
-                        window.location.hash.includes('refresh_token')||
-                        window.location.search.includes('code=');
-
-  // Флаг чтобы не обрабатывать дважды
   let handled=false;
 
   async function onSession(session){
@@ -616,16 +611,19 @@ async function init(){
         await Promise.all([loadProfile(),loadQuestions()]);
         renderAvatarPicker();
       }catch(e){console.error('[RimbaKuis] load error',e);}
+      // Чистим URL от OAuth параметров
+      if(window.location.search||window.location.hash){
+        history.replaceState(null,'',window.location.pathname);
+      }
       showScreen('main');
-      track('login',{method:session.user.app_metadata?.provider||'email'});
     } else {
       showScreen('auth');
     }
   }
 
-  // ВАЖНО: сначала подписываемся, потом делаем getSession
-  // Иначе Google OAuth SIGNED_IN может прийти до подписки и потеряться
+  // Слушатель — ПЕРВЫМ, до любых async вызовов
   sb.auth.onAuthStateChange(async(event,session)=>{
+    console.log('[RimbaKuis] auth event:', event, !!session);
     if(event==='SIGNED_IN'||event==='TOKEN_REFRESHED'){
       await onSession(session);
     }
@@ -636,37 +634,35 @@ async function init(){
     }
   });
 
-  // Таймаут — дольше если OAuth redirect
-  const timeoutMs=isOAuthRedirect?15000:6000;
+  // Таймаут — 10 сек для OAuth, 5 для обычного
+  const isOAuth=window.location.search.includes('code=')||
+                window.location.hash.includes('access_token');
   const hardTimeout=setTimeout(()=>{
     if(!handled){
-      console.warn('[RimbaKuis] Timeout — showing auth');
+      console.warn('[RimbaKuis] Timeout');
       handled=true;
       showScreen('auth');
     }
-  },timeoutMs);
+  }, isOAuth?10000:5000);
 
-  // Проверяем существующую сессию
   try{
+    // getSession() сам обработает code= из URL (PKCE)
     const{data:{session},error}=await sb.auth.getSession();
     if(error){
       console.error('[RimbaKuis] getSession error',error);
       await onSession(null);
       return;
     }
-    // Если сессия уже есть (не OAuth redirect) — заходим сразу
-    if(session&&session.user&&!isOAuthRedirect){
+    if(session&&session.user){
       await onSession(session);
-    } else if(!session&&!isOAuthRedirect){
-      // Нет сессии, не OAuth — сразу на auth
+    } else if(!isOAuth){
       await onSession(null);
     }
-    // Если isOAuthRedirect — ждём SIGNED_IN от onAuthStateChange выше
+    // При isOAuth — ждём SIGNED_IN от onAuthStateChange
   }catch(e){
     console.error('[RimbaKuis] init error',e);
     await onSession(null);
   }
-
   runtimePing();
 }
 
@@ -705,7 +701,15 @@ async function doRegister(){
 }
 async function doGoogleLogin(){
   track('google_login_attempt');
-  await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+window.location.pathname}});
+  // Явно указываем URL без слеша в конце — должен совпадать с Supabase Redirect URLs
+  const redirectTo='https://rimbakuis.vercel.app';
+  await sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{
+      redirectTo,
+      queryParams:{access_type:'offline',prompt:'consent'}
+    }
+  });
 }
 async function doLogout(){await sb.auth.signOut();track('logout');}
 
