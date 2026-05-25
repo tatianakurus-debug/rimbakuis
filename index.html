@@ -41,8 +41,8 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .leaf-deco.tr{top:-10px;right:-10px;transform:rotate(30deg);}
 .leaf-deco.bl{bottom:-10px;left:-10px;transform:rotate(210deg);}
 .leaf-deco.br{bottom:-10px;right:-10px;transform:rotate(150deg);}
-.screen{display:none;position:relative;z-index:1;min-height:100vh;}
-.screen.active{display:flex;flex-direction:column;}
+.screen{display:none;position:fixed;inset:0;z-index:2;overflow-y:auto;flex-direction:column;}
+.screen.active{display:flex;}
 
 /* LOADING */
 #screen-loading{align-items:center;justify-content:center;}
@@ -303,11 +303,11 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .btn-play-again:hover{transform:translateY(-2px);}
 .btn-home{width:100%;max-width:300px;padding:.85rem;border-radius:var(--radius);border:1px solid var(--card-border);background:var(--card-bg);color:var(--white);font-family:'Nunito',sans-serif;font-weight:700;font-size:1rem;cursor:pointer;transition:.2s;}
 .btn-home:hover{background:rgba(255,255,255,0.1);}
-.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:5;}
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:15;}
 .confetto{position:absolute;width:8px;height:8px;opacity:0;animation:fall linear forwards;}
 @keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(110vh) rotate(720deg);opacity:0;}}
 @keyframes fall-defeat{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}80%{opacity:1;}100%{transform:translateY(105vh) rotate(540deg);opacity:0;}}
-#screen-result{z-index:10;background:linear-gradient(135deg,var(--jungle-dark),#0b2f1d);}
+#screen-result{z-index:20;background:linear-gradient(135deg,var(--jungle-dark),#0b2f1d);}
 
 /* STATUS BAR — скрыт полностью, мониторинг только в консоль */
 #status-bar{display:none!important;}
@@ -819,8 +819,12 @@ async function startGame(){
 function quitGame(){
   if(!gameState)return;
   if(!confirm('Yakin mau keluar? Kamu akan dianggap kalah.'))return;
-  clearInterval(gameState.botInterval);
+  // Останавливаем всё
+  if(gameState.botInterval)clearInterval(gameState.botInterval);
   gameState.gameOver=true;
+  gameState.endingGame=true;
+  // Скрываем вопрос если открыт
+  document.getElementById('question-panel').style.display='none';
   track('game_quit',{diff:gameState.diff,topic:gameState.topic});
   showMain();
 }
