@@ -199,70 +199,76 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 
 /* Зона бота — сверху, чёрно-белая */
 .enemy-banner{
-  display:flex;align-items:center;justify-content:center;gap:.4rem;
-  padding:.35rem .8rem;
+  display:flex;align-items:center;justify-content:center;gap:.7rem;
+  padding:.55rem 1rem;
   background:rgba(255,255,255,0.04);
-  border-radius:12px 12px 0 0;
-  border:1px solid rgba(255,255,255,0.08);
+  border-radius:14px 14px 0 0;
+  border:1px solid rgba(255,255,255,0.09);
   border-bottom:none;
-  width:100%;max-width:420px;
+  width:100%;max-width:560px;
 }
-.enemy-banner .jungle-deco{font-size:1.3rem;filter:grayscale(1) brightness(.7);}
-.enemy-banner .bot-info{display:flex;flex-direction:column;align-items:center;}
-.enemy-banner .bot-name{font-weight:800;font-size:.8rem;color:rgba(255,255,255,0.6);}
-.enemy-banner .bot-score{font-family:'Fredoka One',cursive;font-size:1.1rem;color:rgba(255,255,255,0.5);}
+.enemy-banner .jungle-deco{font-size:2rem;filter:grayscale(1) brightness(.65);letter-spacing:3px;}
+.enemy-banner .bot-info{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.enemy-banner .bot-avatar{font-size:1.8rem;filter:grayscale(1) brightness(.65);}
+.enemy-banner .bot-name{font-weight:800;font-size:1.05rem;color:rgba(255,255,255,0.65);}
+.enemy-banner .bot-score{font-family:'Fredoka One',cursive;font-size:1.4rem;color:rgba(255,255,255,0.5);}
 
 /* Сетка шестигранников */
 .hex-board{
   display:flex;flex-direction:column;
   align-items:center;
-  gap:3px;
-  padding:.4rem .6rem;
-  background:rgba(0,0,0,0.25);
+  gap:5px;
+  padding:.55rem .8rem;
+  background:rgba(0,0,0,0.28);
   border-left:1px solid rgba(255,255,255,0.07);
   border-right:1px solid rgba(255,255,255,0.07);
-  width:100%;max-width:420px;
+  width:100%;max-width:560px;
+  overflow:hidden;
 }
-.hex-row{display:flex;justify-content:center;gap:3px;}
-/* Нечётные строки смещены вправо на полгексагона */
-.hex-row.offset{margin-left:38px;}
-@media(min-width:480px){.hex-row.offset{margin-left:46px;}}
+.hex-row{display:flex;justify-content:center;gap:5px;}
+.hex-row.offset{margin-left:50px;}
+@media(min-width:700px){
+  .hex-board{max-width:680px;gap:6px;}
+  .hex-row.offset{margin-left:62px;}
+}
 
-/* Шестигранник через clip-path */
+/* Шестигранник */
 .hex-cell{
-  width:68px;height:76px;
+  width:84px;height:94px;
   clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
-  background:rgba(255,255,255,0.07);
+  background:rgba(255,255,255,0.08);
   display:flex;align-items:center;justify-content:center;
   cursor:pointer;transition:.18s;
-  position:relative;font-size:1.3rem;
-  user-select:none;
+  font-size:1.6rem;
+  user-select:none;flex-shrink:0;
 }
-@media(min-width:480px){
-  .hex-cell{width:82px;height:92px;}
+@media(min-width:700px){
+  .hex-cell{width:106px;height:120px;font-size:2rem;}
 }
-.hex-cell:hover{background:rgba(249,199,79,0.25);transform:scale(1.07);}
-.hex-cell.player{background:rgba(74,222,128,0.35);}
-.hex-cell.player:hover{background:rgba(74,222,128,0.5);}
-.hex-cell.enemy{background:rgba(120,120,120,0.35);}
-.hex-cell.enemy:hover{background:rgba(120,120,120,0.5);}
+.hex-cell:hover{background:rgba(249,199,79,0.28);transform:scale(1.06);}
+.hex-cell.player{background:rgba(74,222,128,0.38);}
+.hex-cell.player:hover{background:rgba(74,222,128,0.52);}
+.hex-cell.enemy{background:rgba(100,100,100,0.38);}
+.hex-cell.enemy:hover{background:rgba(100,100,100,0.52);}
 .hex-cell.locked{cursor:default;}
 .hex-cell.locked:hover{transform:none;}
 
 /* Зона игрока — снизу, цветная */
 .player-banner{
-  display:flex;align-items:center;justify-content:center;gap:.4rem;
-  padding:.35rem .8rem;
-  background:rgba(74,222,128,0.07);
-  border-radius:0 0 12px 12px;
-  border:1px solid rgba(74,222,128,0.15);
+  display:flex;align-items:center;justify-content:center;gap:.7rem;
+  padding:.55rem 1rem;
+  background:rgba(74,222,128,0.08);
+  border-radius:0 0 14px 14px;
+  border:1px solid rgba(74,222,128,0.18);
   border-top:none;
-  width:100%;max-width:420px;
+  width:100%;max-width:560px;
 }
-.player-banner .jungle-deco{font-size:1.3rem;}
-.player-banner .player-info{display:flex;flex-direction:column;align-items:center;}
-.player-banner .player-name{font-weight:800;font-size:.8rem;color:var(--leaf);}
-.player-banner .player-score-disp{font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--leaf);}
+@media(min-width:700px){.player-banner,.enemy-banner{max-width:680px;}}
+.player-banner .jungle-deco{font-size:2rem;letter-spacing:3px;}
+.player-banner .player-info{display:flex;flex-direction:column;align-items:center;gap:1px;}
+.player-banner .player-avatar{font-size:1.8rem;}
+.player-banner .player-name{font-weight:800;font-size:1.05rem;color:var(--leaf);}
+.player-banner .player-score-disp{font-family:'Fredoka One',cursive;font-size:1.4rem;color:var(--leaf);}
 
 /* QUESTION */
 .question-panel{margin:.6rem .75rem;background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;overflow:hidden;}
@@ -460,8 +466,9 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
     <div class="enemy-banner">
       <span class="jungle-deco">🌴🌴🦎🌴</span>
       <div class="bot-info">
+        <span class="bot-avatar" id="hud-bot-avatar2">👤</span>
         <span class="bot-name" id="hud-bot-name2">Lawan</span>
-        <span class="bot-score" id="hud-bot-score2">0</span>
+        <span class="bot-score" id="hud-bot-score2">0 sel</span>
       </div>
     </div>
 
@@ -469,7 +476,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
     <div class="hex-board" id="hex-board"></div>
 
     <!-- Панель вопроса -->
-    <div class="question-panel" id="question-panel" style="display:none;width:100%;max-width:420px;">
+    <div class="question-panel" id="question-panel" style="display:none;width:100%;max-width:560px;">
       <div class="q-top">
         <span class="q-badge" id="q-badge">Pertanyaan</span>
         <span class="q-cell-hint" id="q-cell-hint"></span>
@@ -480,11 +487,12 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 
     <!-- Зона игрока — цветная -->
     <div class="player-banner">
-      <div class="player-info">
-        <span class="player-name" id="hud-player-name2">Kamu</span>
-        <span class="player-score-disp" id="hud-player-score2">0</span>
-      </div>
       <span class="jungle-deco">🌴🐯🌴🌴</span>
+      <div class="player-info">
+        <span class="player-avatar" id="hud-player-avatar2">🦁</span>
+        <span class="player-name" id="hud-player-name2">Kamu</span>
+        <span class="player-score-disp" id="hud-player-score2">0 sel</span>
+      </div>
     </div>
   </div>
 </div>
@@ -777,18 +785,19 @@ async function startGame(){
   if(pool.length<5)pool=allQuestions;
 
   const botNick=BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)];
-  const botAv=BOT_AVATARS[Math.floor(Math.random()*BOT_AVATARS.length)];
+  // FIX 3: Бот получает случайный аватар из тех же что у игроков
+  const botAvatar=AVATARS[Math.floor(Math.random()*AVATARS.length)];
 
   gameState={
     cells:Array(ROWS).fill(null).map(()=>Array(COLS).fill('neutral')),
     playerScore:0,botScore:0,correctCount:0,wrongCount:0,
     selectedCell:null,questionActive:false,
-    botNick,botAv,usedIds:[],gameOver:false,endingGame:false,
+    botNick,botAvatar,usedIds:[],gameOver:false,endingGame:false,
     botMistakesLeft:botMistakes,botInterval:null,pool,diff,topic
   };
 
   document.getElementById('hud-bot-name').textContent=botNick;
-  document.getElementById('hud-bot-av').textContent='👤'; // Бот выглядит как человек
+  document.getElementById('hud-bot-av').textContent='👤';
   document.getElementById('hud-player-name').textContent=currentProfile?.nick||'Kamu';
   document.getElementById('hud-player-av').textContent=currentProfile?.avatar||'🦁';
   const topicLabel=(TOPIC_ICONS[topic]||'🌴')+' '+(topic==='all'?'Semua Tema':topic);
@@ -877,15 +886,19 @@ function botTurn(){
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g.cells[r][c]==='neutral')neutral.push({r,c});
   if(!neutral.length){checkGameOver();return;}
   const pick=neutral[Math.floor(Math.random()*neutral.length)];
-  // Бот ошибается ровно botMistakes раз за игру — не случайно
-  if(g.botMistakesLeft>0&&Math.random()<(g.botMistakesLeft/(neutral.length||1))){
-    // Бот ошибается — ячейка идёт игроку
-    g.cells[pick.r][pick.c]='player';g.playerScore++;
+  // FIX 4: Бот НИКОГДА не отдаёт ячейки игроку сам по себе!
+  // Ошибка бота = он пропускает ход (не берёт ячейку)
+  // Очки игрок получает ТОЛЬКО если сам нажал ячейку и правильно ответил
+  if(g.botMistakesLeft>0&&Math.random()<(g.botMistakesLeft/Math.max(neutral.length,1))){
+    // Бот ошибается — пропускает этот ход, ячейка остаётся нейтральной
     g.botMistakesLeft--;
   } else {
-    g.cells[pick.r][pick.c]='enemy';g.botScore++;
+    // Бот захватывает ячейку
+    g.cells[pick.r][pick.c]='enemy';
+    g.botScore++;
+    updateScoreHUD();renderGrids();
   }
-  updateScoreHUD();renderGrids();checkGameOver();
+  checkGameOver();
 }
 function checkGameOver(){
   const g=gameState;if(g.gameOver||g.endingGame)return;
@@ -899,15 +912,18 @@ function updateScoreHUD(){
   const ps=gameState.playerScore, bs=gameState.botScore;
   document.getElementById('hud-player-score').textContent=ps;
   document.getElementById('hud-bot-score').textContent=bs;
-  // Новые баннеры
   const ps2=document.getElementById('hud-player-score2');
   const bs2=document.getElementById('hud-bot-score2');
   const pn2=document.getElementById('hud-player-name2');
   const bn2=document.getElementById('hud-bot-name2');
+  const pav2=document.getElementById('hud-player-avatar2');
+  const bav2=document.getElementById('hud-bot-avatar2');
   if(ps2)ps2.textContent=ps+' sel';
   if(bs2)bs2.textContent=bs+' sel';
   if(pn2)pn2.textContent=currentProfile?.nick||'Kamu';
   if(bn2)bn2.textContent=gameState.botNick||'Lawan';
+  if(pav2)pav2.textContent=currentProfile?.avatar||'🦁';
+  if(bav2)bav2.textContent=gameState.botAvatar||'👤';
 }
 function updateCellCount(){
   let n=0;
