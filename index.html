@@ -965,23 +965,8 @@ async function endGame(){
   document.getElementById('question-panel').style.display='none';
   const won=g.playerScore>g.botScore;
   const pts=won?100:-10;
-  if(currentUser&&currentProfile){
-    try{
-      const newScore=Math.max(0,currentProfile.score+pts);
-      const newWins=currentProfile.wins+(won?1:0);
-      const newLosses=currentProfile.losses+(won?0:1);
-      const [upd,ins]=await Promise.all([
-        sb.from('profiles').update({score:newScore,wins:newWins,losses:newLosses}).eq('id',currentUser.id),
-        sb.from('game_results').insert({player_id:currentUser.id,won,player_score:g.playerScore,bot_score:g.botScore,correct_answers:g.correctCount,wrong_answers:g.wrongCount})
-      ]);
-      if(upd.error)console.error('[RimbaKuis] score update error',upd.error);
-      else{currentProfile.score=newScore;currentProfile.wins=newWins;currentProfile.losses=newLosses;}
-      renderProfile();
-    }catch(e){
-      console.error('[RimbaKuis] endGame DB error',e);
-      if(typeof Sentry!=='undefined')Sentry.captureException(e);
-    }
-  }
+
+  // ШАГ 1: Сразу показываем экран результата — не ждём БД
   document.getElementById('result-icon').textContent=won?'🏆':'😔';
   document.getElementById('result-title').textContent=won?'Kamu Menang!':'Kamu Kalah...';
   document.getElementById('result-title').className='result-title '+(won?'win':'lose');
@@ -995,6 +980,32 @@ async function endGame(){
   showScreen('result');
   if(won)spawnConfetti(); else spawnDefeat();
   track('game_end',{won,pts,diff:g.diff,topic:g.topic,correct:g.correctCount,wrong:g.wrongCount});
+
+  // ШАГ 2: Записываем в БД в фоне — не блокируем UI
+  if(currentUser&&currentProfile){
+    try{
+      const newScore=Math.max(0,currentProfile.score+pts);
+      const newWins=currentProfile.wins+(won?1:0);
+      const newLosses=currentProfile.losses+(won?0:1);
+      const [upd]=await Promise.all([
+        sb.from('profiles').update({score:newScore,wins:newWins,losses:newLosses}).eq('id',currentUser.id),
+        sb.from('game_results').insert({player_id:currentUser.id,won,player_score:g.playerScore,bot_score:g.botScore,correct_answers:g.correctCount,wrong_answers:g.wrongCount})
+      ]);
+      if(upd.error){
+        console.error('[RimbaKuis] score update error',upd.error);
+      } else {
+        currentProfile.score=newScore;
+        currentProfile.wins=newWins;
+        currentProfile.losses=newLosses;
+        // Обновляем total poin на экране результата после сохранения
+        document.getElementById('rs-total').textContent=newScore;
+        renderProfile();
+      }
+    }catch(e){
+      console.error('[RimbaKuis] endGame DB error',e);
+      if(typeof Sentry!=='undefined')Sentry.captureException(e);
+    }
+  }
 }
 
 function spawnConfetti(){
