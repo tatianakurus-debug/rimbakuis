@@ -594,63 +594,79 @@ window.addEventListener('hashchange',handleHash);
 
 // ==================== INIT ====================
 async function init(){
-  // Убираем # из URL сразу при загрузке
+  // Убираем только чистый # из URL, но НЕ трогаем OAuth токены в hash
   if(window.location.hash==='#'){
     history.replaceState(null,'',window.location.pathname);
   }
 
-  // Жёсткий таймаут — через 4 сек всегда показываем auth
-  const hardTimeout=setTimeout(()=>{
+  // Проверяем — есть ли в URL OAuth токен от Google
+  const isOAuthRedirect = window.location.hash.includes('access_token') ||
+                          window.location.hash.includes('refresh_token') ||
+                          window.location.search.includes('code=');
+
+  // Если OAuth redirect — даём больше времени на обработку токена
+  const timeoutMs = isOAuthRedirect ? 12000 : 5000;
+
+  let hardTimeoutFired = false;
+  const hardTimeout = setTimeout(()=>{
+    hardTimeoutFired = true;
     console.warn('[RimbaKuis] Hard timeout — showing auth');
     showScreen('auth');
-  },4000);
+  }, timeoutMs);
 
-  try{
-    // Сначала проверяем сессию напрямую
-    const{data:{session},error}=await sb.auth.getSession();
-
-    if(error){
-      console.error('[RimbaKuis] getSession error',error);
-      clearTimeout(hardTimeout);
-      showScreen('auth');
-      return;
-    }
-
-    if(session && session.user){
-      // Сессия есть — грузим данные и показываем main
-      currentUser=session.user;
-      await Promise.all([loadProfile(),loadQuestions()]);
-      renderAvatarPicker();
-      clearTimeout(hardTimeout);
-      showScreen('main');
-      track('session_restore',{method:session.user.app_metadata?.provider||'email'});
-    } else {
-      // Сессии нет — сразу на auth
-      clearTimeout(hardTimeout);
-      showScreen('auth');
-    }
-  } catch(e){
-    console.error('[RimbaKuis] init error',e);
-    clearTimeout(hardTimeout);
-    showScreen('auth');
-    if(typeof Sentry!=='undefined')Sentry.captureException(e);
-  }
-
-  // onAuthStateChange только для живых событий (логин/логаут)
-  // НЕ используем для первоначальной загрузки
-  sb.auth.onAuthStateChange(async(event,session)=>{
+  // onAuthStateChange ловит ВСЕ события включая Google OAuth redirect
+  sb.auth.onAuthStateChange(async(event, session)=>{
     if(event==='SIGNED_IN' && session){
+      clearTimeout(hardTimeout);
+      if(hardTimeoutFired) return; // уже показали auth — не перебиваем
       currentUser=session.user;
-      await Promise.all([loadProfile(),loadQuestions()]);
+      await Promise.all([loadProfile(), loadQuestions()]);
       renderAvatarPicker();
       showScreen('main');
       track('login',{method:session.user.app_metadata?.provider||'email'});
     }
     if(event==='SIGNED_OUT'){
-      currentUser=null;currentProfile=null;
+      currentUser=null; currentProfile=null;
       showScreen('auth');
     }
+    if(event==='TOKEN_REFRESHED' && session && !currentUser){
+      clearTimeout(hardTimeout);
+      currentUser=session.user;
+      await Promise.all([loadProfile(), loadQuestions()]);
+      renderAvatarPicker();
+      showScreen('main');
+    }
   });
+
+  try{
+    // Проверяем существующую сессию
+    const{data:{session}, error}=await sb.auth.getSession();
+    if(error){
+      console.error('[RimbaKuis] getSession error', error);
+      clearTimeout(hardTimeout);
+      showScreen('auth');
+      return;
+    }
+    if(session && session.user){
+      // Сессия уже есть (не OAuth redirect) — грузим сразу
+      clearTimeout(hardTimeout);
+      currentUser=session.user;
+      await Promise.all([loadProfile(), loadQuestions()]);
+      renderAvatarPicker();
+      showScreen('main');
+      track('session_restore',{method:session.user.app_metadata?.provider||'email'});
+    } else if(!isOAuthRedirect){
+      // Нет сессии и не OAuth redirect — сразу на auth
+      clearTimeout(hardTimeout);
+      showScreen('auth');
+    }
+    // Если isOAuthRedirect — ждём onAuthStateChange с SIGNED_IN
+  } catch(e){
+    console.error('[RimbaKuis] init error', e);
+    clearTimeout(hardTimeout);
+    showScreen('auth');
+    if(typeof Sentry!=='undefined')Sentry.captureException(e);
+  }
 
   runtimePing();
 }
