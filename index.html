@@ -281,6 +281,21 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
   overflow-y:auto;
 }
 .q-handle{width:40px;height:4px;background:rgba(255,255,255,0.2);border-radius:4px;margin:.6rem auto .2rem;}
+/* Таймер вопроса */
+.q-timer-wrap{display:flex;align-items:center;gap:.5rem;padding:.1rem 1rem .2rem;}
+.q-timer-bar-bg{flex:1;height:6px;background:rgba(255,255,255,0.1);border-radius:6px;overflow:hidden;}
+.q-timer-bar{height:100%;border-radius:6px;background:var(--leaf);transition:width .1s linear;}
+.q-timer-text{font-family:'Fredoka One',cursive;font-size:1.1rem;min-width:28px;text-align:right;}
+.q-timer-text.urgent{color:var(--red);animation:timer-pulse .5s ease infinite alternate;}
+@keyframes timer-pulse{from{transform:scale(1)}to{transform:scale(1.15)}}
+/* Кнопка звука */
+.btn-sound{position:fixed;bottom:1rem;right:1rem;z-index:60;
+  width:44px;height:44px;border-radius:50%;
+  border:2px solid rgba(255,255,255,0.2);
+  background:rgba(0,0,0,0.5);backdrop-filter:blur(8px);
+  font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:.2s;color:var(--white);}
+.btn-sound:hover{background:rgba(0,0,0,0.7);border-color:var(--leaf);}
 .q-top{padding:.5rem 1rem .3rem;display:flex;align-items:center;justify-content:space-between;}
 .q-badge{background:linear-gradient(135deg,var(--jungle-light),var(--leaf));color:var(--white);padding:.2rem .7rem;border-radius:20px;font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
 .q-cell-hint{font-size:.75rem;color:var(--text-muted);}
@@ -502,9 +517,16 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
         <span class="q-badge" id="q-badge">Pertanyaan</span>
         <span class="q-cell-hint" id="q-cell-hint"></span>
       </div>
+      <div class="q-timer-wrap">
+        <div class="q-timer-bar-bg"><div class="q-timer-bar" id="q-timer-bar"></div></div>
+        <span class="q-timer-text" id="q-timer-text">15</span>
+      </div>
       <div class="q-text" id="q-text">Memuat...</div>
       <div class="answers-grid" id="answers-grid"></div>
     </div>
+
+    <!-- Кнопка звука -->
+    <button class="btn-sound" id="btn-sound" onclick="toggleSound()" title="Suara">🔊</button>
 
     <!-- Зона игрока — цветная -->
     <div class="player-banner">
@@ -591,6 +613,125 @@ function handleHash(){
   else if(hash==='#pertarungan'){switchTab('pertarungan');}
 }
 window.addEventListener('hashchange',handleHash);
+
+// ==================== SOUND ====================
+let soundEnabled=true;
+let jungleAudio=null;
+
+function initSound(){
+  // Звук джунглей через Web Audio API
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return;
+    const ctx=new AudioCtx();
+
+    function makeJungle(){
+      if(!soundEnabled)return;
+      // Crickets / birds loop через osillators
+      const osc1=ctx.createOscillator();
+      const osc2=ctx.createOscillator();
+      const gain1=ctx.createGain();
+      const gain2=ctx.createGain();
+      osc1.type='sine'; osc1.frequency.value=800+Math.random()*400;
+      osc2.type='sine'; osc2.frequency.value=1200+Math.random()*600;
+      gain1.gain.value=0.04; gain2.gain.value=0.02;
+      osc1.connect(gain1); gain1.connect(ctx.destination);
+      osc2.connect(gain2); gain2.connect(ctx.destination);
+      osc1.start(); osc2.start();
+      const dur=0.08+Math.random()*0.12;
+      osc1.stop(ctx.currentTime+dur);
+      osc2.stop(ctx.currentTime+dur);
+      setTimeout(makeJungle, 300+Math.random()*1200);
+    }
+
+    jungleAudio={ctx, makeJungle};
+
+    function playCorrect(){
+      if(!soundEnabled)return;
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='triangle';
+      osc.frequency.setValueAtTime(523,ctx.currentTime);
+      osc.frequency.setValueAtTime(659,ctx.currentTime+0.1);
+      osc.frequency.setValueAtTime(784,ctx.currentTime+0.2);
+      gain.gain.setValueAtTime(0.3,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime+0.5);
+    }
+
+    function playWrong(){
+      if(!soundEnabled)return;
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='sawtooth';
+      osc.frequency.setValueAtTime(300,ctx.currentTime);
+      osc.frequency.setValueAtTime(200,ctx.currentTime+0.1);
+      osc.frequency.setValueAtTime(150,ctx.currentTime+0.2);
+      gain.gain.setValueAtTime(0.2,ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(); osc.stop(ctx.currentTime+0.4);
+    }
+
+    jungleAudio.playCorrect=playCorrect;
+    jungleAudio.playWrong=playWrong;
+    jungleAudio.resume=()=>{ if(ctx.state==='suspended')ctx.resume(); };
+
+  }catch(e){ console.warn('[Sound] init failed',e); }
+}
+
+function startJungleAmbience(){
+  if(!jungleAudio||!soundEnabled)return;
+  jungleAudio.resume();
+  jungleAudio.makeJungle();
+}
+function stopJungleAmbience(){ /* осцилляторы сами остановятся */ }
+
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  const btn=document.getElementById('btn-sound');
+  if(btn) btn.textContent=soundEnabled?'🔊':'🔇';
+  if(soundEnabled) startJungleAmbience();
+}
+
+// ==================== QUESTION TIMER ====================
+let questionTimerInterval=null;
+const QUESTION_TIMEOUT=15;
+
+function startQuestionTimer(onTimeout){
+  clearInterval(questionTimerInterval);
+  let remaining=QUESTION_TIMEOUT;
+  const bar=document.getElementById('q-timer-bar');
+  const txt=document.getElementById('q-timer-text');
+  if(bar) bar.style.width='100%';
+  if(txt){ txt.textContent=remaining; txt.className='q-timer-text'; }
+
+  questionTimerInterval=setInterval(()=>{
+    remaining--;
+    const pct=Math.max(0,(remaining/QUESTION_TIMEOUT)*100);
+    if(bar) bar.style.width=pct+'%';
+    if(txt){
+      txt.textContent=remaining;
+      // Срочность — меняем цвет
+      if(remaining<=5){
+        bar.style.background='var(--red)';
+        txt.className='q-timer-text urgent';
+      } else if(remaining<=8){
+        bar.style.background='var(--gold)';
+        txt.className='q-timer-text';
+      }
+    }
+    if(remaining<=0){
+      clearInterval(questionTimerInterval);
+      onTimeout();
+    }
+  },1000);
+}
+
+function stopQuestionTimer(){
+  clearInterval(questionTimerInterval);
+}
 
 // ==================== INIT ====================
 async function init(){
@@ -780,7 +921,8 @@ async function startGame(){
   // Ошибки бота: mudah=4, sedang=3, sulit=2 из 15 ячеек
   const botMistakes=diff==='mudah'?4:diff==='sedang'?3:2;
   const botAccuracy=0; // не используется напрямую — используем botMistakesLeft
-  const botSpeed=diff==='mudah'?4500:diff==='sedang'?3500:2500;
+  // Скорость бота: sulit=8сек, sedang=10сек, mudah=13сек
+  const botSpeed=diff==='mudah'?13000:diff==='sedang'?10000:8000;
 
   // Фильтруем по теме и сложности
   let pool=allQuestions.filter(q=>{
@@ -820,6 +962,9 @@ async function startGame(){
   });
   gameState.botInterval=setInterval(botTurn,botSpeed);
   track('game_start',{diff,topic});
+  // Звук джунглей
+  if(!jungleAudio) initSound();
+  startJungleAmbience();
 }
 
 function quitGame(){
@@ -830,6 +975,7 @@ function quitGame(){
   gameState.gameOver=true;
   gameState.endingGame=true;
   // Скрываем вопрос если открыт
+  stopQuestionTimer();
   document.getElementById('question-panel').style.display='none';
   track('game_quit',{diff:gameState.diff,topic:gameState.topic});
   showMain();
@@ -876,6 +1022,9 @@ function showQuestion(r,c){
   if(!available.length){g.usedIds=[];available=g.pool;}
   const q=available[Math.floor(Math.random()*available.length)];
   g.usedIds.push(q.id);g.currentQ=q;
+  // Сбрасываем цвет таймер-бара
+  const bar=document.getElementById('q-timer-bar');
+  if(bar){bar.style.background='var(--leaf)';}
   document.getElementById('question-panel').style.display='block';
   document.getElementById('q-badge').textContent=q.category;
   document.getElementById('q-cell-hint').textContent=`Sel [${r+1},${c+1}]`;
@@ -883,13 +1032,29 @@ function showQuestion(r,c){
   const answers=[q.answer_a,q.answer_b,q.answer_c,q.answer_d];
   const letters=['A','B','C','D'];
   document.getElementById('answers-grid').innerHTML=answers.map((ans,i)=>`<button class="answer-btn" onclick="onAnswer(${i},${q.correct})"><span class="answer-letter">${letters[i]}.</span>${ans}</button>`).join('');
+  // Запускаем таймер — по истечении засчитываем неправильный ответ
+  startQuestionTimer(()=>{
+    if(!g.questionActive||g.gameOver)return;
+    onAnswer(-1, q.correct); // -1 = таймаут, всегда неправильно
+  });
 }
 function onAnswer(chosen,correct){
   const g=gameState;
-  document.querySelectorAll('.answer-btn').forEach((b,i)=>b.classList.add(i===correct?'correct':i===chosen&&chosen!==correct?'wrong':'disabled'));
+  if(!g.questionActive||g.gameOver)return;
+  stopQuestionTimer();
+  const isCorrect=chosen===correct;
+  // Подсветка ответов
+  document.querySelectorAll('.answer-btn').forEach((b,i)=>{
+    b.classList.add(i===correct?'correct':i===chosen&&chosen!==correct?'wrong':'disabled');
+  });
   const{r,c}=g.selectedCell;
-  if(chosen===correct){g.cells[r][c]='player';g.playerScore++;g.correctCount++;}
-  else{g.cells[r][c]='enemy';g.botScore++;g.wrongCount++;}
+  if(isCorrect){
+    g.cells[r][c]='player';g.playerScore++;g.correctCount++;
+    if(jungleAudio?.playCorrect) jungleAudio.playCorrect();
+  } else {
+    g.cells[r][c]='enemy';g.botScore++;g.wrongCount++;
+    if(jungleAudio?.playWrong) jungleAudio.playWrong();
+  }
   updateScoreHUD();renderGrids();
   setTimeout(()=>{
     document.getElementById('question-panel').style.display='none';
@@ -950,6 +1115,7 @@ function updateCellCount(){
 async function endGame(){
   const g=gameState;if(g.gameOver)return;
   g.gameOver=true;clearInterval(g.botInterval);
+  stopQuestionTimer();
   document.getElementById('question-panel').style.display='none';
   const won=g.playerScore>g.botScore;
   const pts=won?100:-10;
