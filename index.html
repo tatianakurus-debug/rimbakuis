@@ -164,6 +164,22 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .diff-icon{font-size:1.8rem;margin-bottom:.4rem;}
 .diff-name{font-weight:800;font-size:.85rem;}
 .diff-desc{font-size:.7rem;color:var(--text-muted);margin-top:.2rem;}
+/* Мини-кнопка Pertarungan для Profil и Peringkat */
+@keyframes shimmer-mini{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.btn-battle-mini{
+  padding:.55rem 1.1rem;border-radius:var(--radius);border:none;
+  font-family:'Fredoka One',cursive;font-size:1rem;
+  cursor:pointer;letter-spacing:.3px;
+  background:linear-gradient(270deg,#f97316,#ef4444,#f9c74f,#ef4444,#f97316);
+  background-size:300% 300%;
+  color:var(--white);
+  animation:shimmer-mini 3s ease infinite;
+  transition:transform .15s;
+  white-space:nowrap;
+}
+.btn-battle-mini:hover{transform:scale(1.05);}
+.btn-battle-mini:active{transform:scale(.97);}
+
 /* Кнопка Pertarungan — большая с переливанием */
 @keyframes shimmer{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes pulse-battle{0%,100%{box-shadow:0 6px 25px rgba(239,68,68,0.5),0 0 0 0 rgba(249,199,79,0.4);}50%{box-shadow:0 8px 35px rgba(239,68,68,0.7),0 0 0 10px rgba(249,199,79,0);}}
@@ -414,13 +430,16 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 
   <!-- PROFILE -->
   <div class="tab-content" id="tab-profil">
-    <div class="profile-hero">
-      <div class="avatar-lg" id="profile-avatar-lg">🦁</div>
-      <div class="profile-info">
-        <h2 id="profile-nick">Pemain</h2>
-        <p id="profile-email">—</p>
-        <span class="rank-badge" id="profile-rank">Peringkat #—</span>
+    <div class="profile-hero" style="justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <div class="avatar-lg" id="profile-avatar-lg">🦁</div>
+        <div class="profile-info">
+          <h2 id="profile-nick">Pemain</h2>
+          <p id="profile-email">—</p>
+          <span class="rank-badge" id="profile-rank">Peringkat #—</span>
+        </div>
       </div>
+      <button class="btn-battle-mini" onclick="switchTab('pertarungan')">⚔️ Lawan!</button>
     </div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-num wins" id="stat-wins">0</div><div class="stat-label">Kemenangan</div></div>
@@ -439,7 +458,10 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 
   <!-- RATING -->
   <div class="tab-content" id="tab-peringkat">
-    <div class="rating-header"><h2>🏆 Papan Peringkat</h2><p>Pemain terbaik di rimba!</p></div>
+    <div class="rating-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <div><h2>🏆 Papan Peringkat</h2><p style="color:var(--text-muted);font-size:.9rem;">Pemain terbaik di rimba!</p></div>
+      <button class="btn-battle-mini" onclick="switchTab('pertarungan')">⚔️ Lawan!</button>
+    </div>
     <div class="podium" id="podium-display"></div>
     <div class="rating-list" id="rating-list"></div>
   </div>
@@ -617,14 +639,20 @@ window.addEventListener('hashchange',handleHash);
 // ==================== SOUND ====================
 let soundEnabled=true;
 let jungleAudio=null;
-let bgMusic=null;
+let bgMusic=null;      // jungle.mp3 — меню/профиль/рейтинг
+let battleMusic=null;  // battle.mp3 — во время схватки
 
 function initSound(){
   try{
-    // Фоновая музыка из MP3
+    // Фоновая музыка меню
     bgMusic=new Audio('jungle.mp3');
     bgMusic.loop=true;
-    bgMusic.volume=0.35;
+    bgMusic.volume=0.3;
+
+    // Боевая музыка
+    battleMusic=new Audio('battle.mp3');
+    battleMusic.loop=true;
+    battleMusic.volume=0.4;
 
     // Web Audio для эффектов правильный/неправильный
     const AudioCtx=window.AudioContext||window.webkitAudioContext;
@@ -670,15 +698,29 @@ function initSound(){
   }
 }
 
+// Запуск фоновой музыки меню
+function startMenuMusic(){
+  if(!soundEnabled)return;
+  if(!bgMusic)initSound();
+  if(battleMusic){battleMusic.pause();battleMusic.currentTime=0;}
+  bgMusic.currentTime=bgMusic.currentTime||0;
+  bgMusic.play().catch(e=>console.warn('[Sound] menu autoplay blocked',e));
+}
+
+// Запуск боевой музыки
 function startJungleAmbience(){
-  if(!soundEnabled||!bgMusic)return;
-  bgMusic.currentTime=0;
-  bgMusic.play().catch(e=>console.warn('[Sound] autoplay blocked',e));
+  if(!soundEnabled)return;
+  if(!battleMusic)initSound();
+  if(bgMusic){bgMusic.pause();}
+  battleMusic.currentTime=0;
+  battleMusic.play().catch(e=>console.warn('[Sound] battle autoplay blocked',e));
   if(jungleAudio?.resume) jungleAudio.resume();
 }
 
+// Стоп боевой музыки → возобновить меню
 function stopJungleAmbience(){
-  if(bgMusic){ bgMusic.pause(); bgMusic.currentTime=0; }
+  if(battleMusic){battleMusic.pause();battleMusic.currentTime=0;}
+  if(soundEnabled&&bgMusic) bgMusic.play().catch(()=>{});
 }
 
 function toggleSound(){
@@ -686,9 +728,12 @@ function toggleSound(){
   const btn=document.getElementById('btn-sound');
   if(btn) btn.textContent=soundEnabled?'🔊':'🔇';
   if(soundEnabled){
-    startJungleAmbience();
+    // Возобновляем подходящую музыку
+    const gameActive=document.getElementById('screen-game').classList.contains('active');
+    if(gameActive) startJungleAmbience(); else startMenuMusic();
   } else {
     if(bgMusic) bgMusic.pause();
+    if(battleMusic) battleMusic.pause();
   }
 }
 
@@ -748,6 +793,9 @@ async function init(){
       await Promise.all([loadProfile(),loadQuestions()]);
       renderAvatarPicker();
       showScreen('main');
+      // Запускаем музыку меню после логина
+      if(!bgMusic)initSound();
+      startMenuMusic();
     } else {
       showScreen('auth');
     }
@@ -881,7 +929,12 @@ function showScreen(s){
   document.querySelectorAll('.screen').forEach(sc=>sc.classList.remove('active'));
   document.getElementById('screen-'+s).classList.add('active');
 }
-function showMain(){loadLeaderboard();showScreen('main');switchTab('pertarungan');}
+function showMain(){
+  loadLeaderboard();showScreen('main');switchTab('pertarungan');
+  // Музыка меню
+  if(!bgMusic)initSound();
+  startMenuMusic();
+}
 function switchTab(t){
   document.querySelectorAll('.nav-tab').forEach((b,i)=>b.classList.toggle('active',['profil','peringkat','pertarungan'][i]===t));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
