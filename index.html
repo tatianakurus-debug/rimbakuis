@@ -616,7 +616,7 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
     <div class="rs-card"><div class="rsn" id="rs-cells">0</div><div class="rsl">Sel Dikuasai</div></div>
     <div class="rs-card"><div class="rsn" id="rs-total">0</div><div class="rsl">Total Poin</div></div>
   </div>
-  <button class="btn-play-again" onclick="startGame()">🎮 Main Lagi!</button>
+  <button class="btn-play-again" onclick="stopAllMusic();startGame()">🎮 Main Lagi!</button>
   <button class="btn-home" onclick="showMain()">🏠 Kembali ke Beranda</button>
 </div>
 
@@ -682,6 +682,8 @@ let soundEnabled=true;
 let jungleAudio=null;
 let bgMusic=null;
 let battleMusic=null;
+let winMusic=null;
+let loseMusic=null;
 let musicReady=false; // флаг: пользователь уже взаимодействовал
 
 function initSound(){
@@ -694,6 +696,12 @@ function initSound(){
     battleMusic=new Audio('battle.mp3');
     battleMusic.loop=true;
     battleMusic.volume=0.4;
+    winMusic=new Audio('win.mp3');
+    winMusic.loop=false;
+    winMusic.volume=0.6;
+    loseMusic=new Audio('lose.mp3');
+    loseMusic.loop=false;
+    loseMusic.volume=0.5;
 
     const AudioCtx=window.AudioContext||window.webkitAudioContext;
     if(!AudioCtx){ jungleAudio={playCorrect:()=>{},playWrong:()=>{}}; return; }
@@ -773,6 +781,24 @@ function startJungleAmbience(){
 function stopJungleAmbience(){
   if(battleMusic){battleMusic.pause();battleMusic.currentTime=0;}
   if(soundEnabled&&bgMusic)bgMusic.play().catch(()=>{});
+}
+
+function stopAllMusic(){
+  [bgMusic,battleMusic,winMusic,loseMusic].forEach(m=>{
+    if(m){m.pause();m.currentTime=0;}
+  });
+}
+
+function playWinMusic(){
+  if(!soundEnabled)return;
+  stopAllMusic();
+  if(winMusic) winMusic.play().catch(()=>{});
+}
+
+function playLoseMusic(){
+  if(!soundEnabled)return;
+  stopAllMusic();
+  if(loseMusic) loseMusic.play().catch(()=>{});
 }
 
 function toggleSound(){
@@ -997,6 +1023,9 @@ function showScreen(s){
   document.getElementById('screen-'+s).classList.add('active');
 }
 function showMain(){
+  // Стопаем музыку победы/поражения при уходе с экрана результата
+  if(winMusic){winMusic.pause();winMusic.currentTime=0;}
+  if(loseMusic){loseMusic.pause();loseMusic.currentTime=0;}
   loadLeaderboard();showScreen('main');switchTab('pertarungan');
   startMenuMusic(); // работает только если unlockAudio уже сработал
 }
@@ -1275,7 +1304,8 @@ async function endGame(){
   document.getElementById('rs-cells').textContent=g.playerScore;
   document.getElementById('rs-total').textContent=currentProfile?.score||0;
   showScreen('result');
-  if(won)spawnConfetti(); else spawnDefeat();
+  if(won){ spawnConfetti(); playWinMusic(); }
+  else { spawnDefeat(); playLoseMusic(); }
   track('game_end',{won,pts,diff:g.diff,topic:g.topic,correct:g.correctCount,wrong:g.wrongCount});
 
   // ШАГ 2: Записываем в БД в фоне — не блокируем UI
