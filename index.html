@@ -1021,9 +1021,7 @@ const OB_STEPS = [
     targetId: 'question-panel',
     emoji: '❓',
     title: 'Jawab Pertanyaan!',
-    text: 'Pilih jawaban yang benar dalam 15 detik ⏱️
-✅ Benar = sel jadi milikmu 🌿
-❌ Salah = sel milik lawan ⚔️',
+    text: 'Pilih jawaban yang benar dalam 15 detik ⏱️  ✅ Benar = sel jadi milikmu 🌿  ❌ Salah = sel milik lawan ⚔️',
     badge: 'Langkah 5 dari 5',
     arrow: 'arrow-top',
     btnText: 'Ayo bermain! 🎮',
@@ -1035,10 +1033,16 @@ const OB_STEPS = [
 
 // Проверяем нужно ли показывать онбординг
 async function checkOnboarding(){
-  if(!currentProfile) return;
-  if(currentProfile.onboarding_done) return;
-  // Небольшая задержка чтобы экран успел отрисоваться
-  setTimeout(()=>startOnboarding(), 800);
+  try{
+    if(!currentProfile) return;
+    // Если колонка ещё не создана в БД — безопасно пропускаем
+    if(currentProfile.onboarding_done === undefined) return;
+    if(currentProfile.onboarding_done === true) return;
+    // Небольшая задержка чтобы экран успел отрисоваться
+    setTimeout(()=>startOnboarding(), 1000);
+  } catch(e){
+    console.warn('[Onboarding] skipped:', e);
+  }
 }
 
 function startOnboarding(){
@@ -1374,7 +1378,9 @@ function showMain(){
   if(winMusic){winMusic.pause();winMusic.currentTime=0;}
   if(loseMusic){loseMusic.pause();loseMusic.currentTime=0;}
   loadLeaderboard();showScreen('main');switchTab('pertarungan');
-  startMenuMusic(); // работает только если unlockAudio уже сработал
+  startMenuMusic();
+  // Онбординг — только после того как экран показан
+  setTimeout(checkOnboarding, 600);
 }
 function switchTab(t){
   document.querySelectorAll('.nav-tab').forEach((b,i)=>b.classList.toggle('active',['profil','peringkat','pertarungan'][i]===t));
