@@ -419,22 +419,30 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
   pointer-events:none;
   transition:opacity .3s;
 }
-#onboarding-overlay.active{pointer-events:all;}
+#onboarding-overlay.active{pointer-events:none;}
 
 /* Затемнение — 4 прямоугольника вокруг spotlight */
 .ob-dark{
   position:fixed;background:rgba(0,0,0,0.72);
   transition:all .35s ease;
   pointer-events:all;
+  z-index:501;
 }
 #ob-top{top:0;left:0;right:0;}
 #ob-bottom{bottom:0;left:0;right:0;}
 #ob-left{left:0;}
 #ob-right{right:0;}
 
+/* Прозрачная зона spotlight — пропускает клики к элементу */
+#ob-spotlight-hole{
+  position:fixed;z-index:502;
+  pointer-events:none;
+  border-radius:8px;
+  box-shadow:0 0 0 3px rgba(167,139,250,0.6);
+}
 /* Тултип */
 .ob-tooltip{
-  position:fixed;z-index:502;
+  position:fixed;z-index:503;
   background:linear-gradient(135deg,#1a0a3a,#2d1060);
   border:2px solid #7c3aed;
   border-radius:16px;
@@ -1107,6 +1115,10 @@ function positionSpotlight(el, step){
   document.getElementById('ob-left').style.cssText = `top:${r.top}px;left:0;width:${r.left}px;height:${r.height}px;`;
   document.getElementById('ob-right').style.cssText = `top:${r.top}px;left:${r.right}px;right:0;height:${r.height}px;`;
 
+  // Прозрачная рамка поверх spotlight (не блокирует клики)
+  const hole = document.getElementById('ob-spotlight-hole');
+  hole.style.cssText = `left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
+
   // Пульс
   const pulse = document.getElementById('ob-pulse');
   pulse.style.display = 'block';
@@ -1729,6 +1741,7 @@ init();
   <div class="ob-dark" id="ob-left"></div>
   <div class="ob-dark" id="ob-right"></div>
   <div class="ob-dark" id="ob-bottom"></div>
+  <div id="ob-spotlight-hole"></div>
   <div class="ob-tooltip" id="ob-tooltip" style="display:none">
     <div class="ob-step-badge" id="ob-badge">Langkah 1 dari 5</div>
     <span class="ob-emoji" id="ob-emoji">👋</span>
