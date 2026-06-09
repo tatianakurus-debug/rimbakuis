@@ -410,6 +410,86 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 
 /* STATUS BAR — скрыт полностью, мониторинг только в консоль */
 #status-bar{display:none!important;}
+
+/* ══════════════════════════════════
+   ONBOARDING OVERLAY
+══════════════════════════════════ */
+#onboarding-overlay{
+  position:fixed;inset:0;z-index:500;
+  pointer-events:none;
+  transition:opacity .3s;
+}
+#onboarding-overlay.active{pointer-events:all;}
+
+/* Затемнение — 4 прямоугольника вокруг spotlight */
+.ob-dark{
+  position:fixed;background:rgba(0,0,0,0.72);
+  transition:all .35s ease;
+  pointer-events:all;
+}
+#ob-top{top:0;left:0;right:0;}
+#ob-bottom{bottom:0;left:0;right:0;}
+#ob-left{left:0;}
+#ob-right{right:0;}
+
+/* Тултип */
+.ob-tooltip{
+  position:fixed;z-index:502;
+  background:linear-gradient(135deg,#1a0a3a,#2d1060);
+  border:2px solid #7c3aed;
+  border-radius:16px;
+  padding:1rem 1.25rem 1rem;
+  max-width:300px;min-width:220px;
+  box-shadow:0 8px 32px rgba(124,58,237,0.4);
+  animation:ob-appear .3s ease;
+}
+@keyframes ob-appear{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+/* Стрелка тултипа */
+.ob-tooltip::before{
+  content:'';position:absolute;
+  border:8px solid transparent;
+}
+.ob-tooltip.arrow-top::before{top:-16px;left:50%;transform:translateX(-50%);border-bottom-color:#7c3aed;}
+.ob-tooltip.arrow-bottom::before{bottom:-16px;left:50%;transform:translateX(-50%);border-top-color:#7c3aed;}
+.ob-tooltip.arrow-left::before{left:-16px;top:50%;transform:translateY(-50%);border-right-color:#7c3aed;}
+.ob-tooltip.arrow-right::before{right:-16px;top:50%;transform:translateY(-50%);border-left-color:#7c3aed;}
+
+.ob-step-badge{
+  font-size:.7rem;font-weight:800;color:#a78bfa;
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:.4rem;
+}
+.ob-emoji{font-size:1.8rem;display:block;margin-bottom:.4rem;}
+.ob-title{font-family:'Fredoka One',cursive;font-size:1.15rem;color:#fff;margin-bottom:.3rem;}
+.ob-text{font-size:.85rem;color:rgba(255,255,255,0.8);line-height:1.5;margin-bottom:.75rem;}
+.ob-actions{display:flex;align-items:center;justify-content:space-between;gap:.5rem;}
+.ob-btn-skip{
+  background:none;border:none;color:rgba(255,255,255,0.4);
+  font-family:'Nunito',sans-serif;font-size:.8rem;cursor:pointer;
+  text-decoration:underline;padding:.2rem;
+}
+.ob-btn-skip:hover{color:rgba(255,255,255,0.7);}
+.ob-btn-next{
+  background:linear-gradient(135deg,#7c3aed,#a855f7);
+  border:none;border-radius:8px;color:#fff;
+  font-family:'Nunito',sans-serif;font-weight:800;font-size:.85rem;
+  padding:.45rem 1rem;cursor:pointer;transition:.15s;
+}
+.ob-btn-next:hover{transform:scale(1.04);}
+
+/* Пульсирующая точка на целевом элементе */
+.ob-pulse{
+  position:fixed;z-index:503;
+  width:48px;height:48px;border-radius:50%;
+  background:rgba(167,139,250,0.25);
+  animation:ob-pulse 1.2s ease-in-out infinite;
+  pointer-events:none;
+  transform:translate(-50%,-50%);
+}
+@keyframes ob-pulse{
+  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.8;}
+  50%{transform:translate(-50%,-50%) scale(1.5);opacity:0;}
+}
 </style>
 </head>
 <body>
@@ -540,12 +620,12 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
       </div>
 
       <div class="section-label">⚡ Pilih Kesulitan</div>
-      <div class="difficulty-grid">
+      <div class="difficulty-grid" id="difficulty-grid-wrap">
         <div class="diff-card selected" data-diff="mudah"><div class="diff-icon">🌱</div><div class="diff-name">Mudah</div><div class="diff-desc">Untuk pemula</div></div>
         <div class="diff-card" data-diff="sedang"><div class="diff-icon">🌿</div><div class="diff-name">Sedang</div><div class="diff-desc">Tantangan seru</div></div>
         <div class="diff-card" data-diff="sulit"><div class="diff-icon">🌳</div><div class="diff-name">Sulit</div><div class="diff-desc">Ahli rimba</div></div>
       </div>
-      <button class="btn-battle" onclick="startGame()">🥊 LAWAN SEKARANG!</button>
+      <button class="btn-battle" id="btn-battle-main" onclick="startGame()">🥊 LAWAN SEKARANG!</button>
     </div>
   </div>
 </div>
@@ -876,6 +956,254 @@ function stopQuestionTimer(){
   clearInterval(questionTimerInterval);
 }
 
+// ══════════════════════════════════════════
+// ONBOARDING
+// ══════════════════════════════════════════
+let obStep = 0;
+let obActive = false;
+let obWaitingForAction = false; // ждём реального действия юзера
+
+const OB_STEPS = [
+  // Шаг 1: выбор темы (на экране pertarungan)
+  {
+    targetId: 'topic-grid',
+    emoji: '🎯',
+    title: 'Pilih Tema!',
+    text: 'Kamu bisa pilih topik pertanyaan — IT, Matematika, Sejarah Indonesia, dan lainnya. Klik salah satu!',
+    badge: 'Langkah 1 dari 5',
+    arrow: 'arrow-top',
+    btnText: 'Mengerti →',
+    waitForAction: false,
+    screen: 'main',
+    tab: 'pertarungan'
+  },
+  // Шаг 2: выбор сложности
+  {
+    targetId: 'difficulty-grid-wrap',
+    emoji: '⚡',
+    title: 'Pilih Kesulitan!',
+    text: 'Mudah untuk pemula, Sedang untuk yang sudah siap, Sulit untuk jagoan rimba! Mulai dari Mudah dulu ya.',
+    badge: 'Langkah 2 dari 5',
+    arrow: 'arrow-top',
+    btnText: 'Oke! →',
+    waitForAction: false,
+    screen: 'main',
+    tab: 'pertarungan'
+  },
+  // Шаг 3: кнопка старта
+  {
+    targetId: 'btn-battle-main',
+    emoji: '🥊',
+    title: 'Mulai Pertarungan!',
+    text: 'Tekan tombol ini untuk memulai! Bot akan jadi lawan kamu. Kamu siap?',
+    badge: 'Langkah 3 dari 5',
+    arrow: 'arrow-top',
+    btnText: 'Siap! →',
+    waitForAction: false,
+    screen: 'main',
+    tab: 'pertarungan'
+  },
+  // Шаг 4: поле — ждём тапа по ячейке
+  {
+    targetId: 'hex-board',
+    emoji: '🌑',
+    title: 'Klik Sel di Papan!',
+    text: 'Pilih sel yang belum direbut (warna gelap). Klik salah satu untuk mendapatkan pertanyaan!',
+    badge: 'Langkah 4 dari 5',
+    arrow: 'arrow-bottom',
+    btnText: null, // ждём действия
+    waitForAction: true,
+    screen: 'game',
+    actionHint: 'cell_click'
+  },
+  // Шаг 5: вопрос с таймером
+  {
+    targetId: 'question-panel',
+    emoji: '❓',
+    title: 'Jawab Pertanyaan!',
+    text: 'Pilih jawaban yang benar dalam 15 detik ⏱️
+✅ Benar = sel jadi milikmu 🌿
+❌ Salah = sel milik lawan ⚔️',
+    badge: 'Langkah 5 dari 5',
+    arrow: 'arrow-top',
+    btnText: 'Ayo bermain! 🎮',
+    waitForAction: false,
+    screen: 'game',
+    isLast: true
+  }
+];
+
+// Проверяем нужно ли показывать онбординг
+async function checkOnboarding(){
+  if(!currentProfile) return;
+  if(currentProfile.onboarding_done) return;
+  // Небольшая задержка чтобы экран успел отрисоваться
+  setTimeout(()=>startOnboarding(), 800);
+}
+
+function startOnboarding(){
+  obStep = 0;
+  obActive = true;
+  document.getElementById('onboarding-overlay').classList.add('active');
+  showObStep(0);
+}
+
+function showObStep(idx){
+  const step = OB_STEPS[idx];
+  if(!step){ finishOnboarding(); return; }
+
+  // Если нужен другой экран/таб — переключаем
+  if(step.screen === 'main' && step.tab){
+    switchTab(step.tab);
+  }
+
+  // Находим целевой элемент
+  const target = document.getElementById(step.targetId);
+
+  // Заполняем тултип
+  document.getElementById('ob-badge').textContent = step.badge;
+  document.getElementById('ob-emoji').textContent = step.emoji;
+  document.getElementById('ob-title').textContent = step.title;
+  document.getElementById('ob-text').textContent = step.text;
+  const nextBtn = document.getElementById('ob-btn-next');
+  if(step.waitForAction){
+    nextBtn.style.display = 'none';
+    obWaitingForAction = true;
+  } else {
+    nextBtn.style.display = 'block';
+    nextBtn.textContent = step.btnText || 'Lanjut →';
+    obWaitingForAction = false;
+  }
+
+  // Позиционируем spotlight и тултип
+  if(target){
+    positionSpotlight(target, step);
+  } else {
+    // Элемент не найден — пропускаем шаг
+    onboardingNext();
+  }
+}
+
+function positionSpotlight(el, step){
+  const rect = el.getBoundingClientRect();
+  const pad = 10;
+  const r = {
+    top: rect.top - pad,
+    left: rect.left - pad,
+    right: rect.right + pad,
+    bottom: rect.bottom + pad,
+    width: rect.width + pad*2,
+    height: rect.height + pad*2,
+  };
+
+  // 4 тёмных полосы вокруг элемента
+  const top = document.getElementById('ob-top');
+  const bot = document.getElementById('ob-bottom');
+  const left = document.getElementById('ob-left');
+  const right = document.getElementById('ob-right');
+
+  top.style.cssText = `top:0;left:0;right:0;height:${r.top}px;`;
+  bot.style.cssText = `bottom:0;left:0;right:0;top:${r.bottom}px;`;
+  left.style.cssText = `top:${r.top}px;left:0;width:${r.left}px;height:${r.height}px;`;
+  right.style.cssText = `top:${r.top}px;left:${r.right}px;right:0;height:${r.height}px;`;
+
+  // Пульс по центру элемента
+  const pulse = document.getElementById('ob-pulse');
+  pulse.style.display = 'block';
+  pulse.style.left = (rect.left + rect.width/2) + 'px';
+  pulse.style.top = (rect.top + rect.height/2) + 'px';
+
+  // Тултип
+  const tooltip = document.getElementById('ob-tooltip');
+  tooltip.style.display = 'block';
+  tooltip.className = 'ob-tooltip ' + step.arrow;
+
+  // Позиция тултипа
+  const tw = 300, th = 200;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let tx, ty;
+
+  if(step.arrow === 'arrow-top'){
+    // Тултип снизу от элемента
+    ty = Math.min(r.bottom + 16, vh - th - 10);
+    tx = Math.max(10, Math.min(rect.left + rect.width/2 - tw/2, vw - tw - 10));
+  } else if(step.arrow === 'arrow-bottom'){
+    // Тултип сверху
+    ty = Math.max(10, r.top - th - 16);
+    tx = Math.max(10, Math.min(rect.left + rect.width/2 - tw/2, vw - tw - 10));
+  } else if(step.arrow === 'arrow-left'){
+    tx = r.right + 16;
+    ty = Math.max(10, rect.top + rect.height/2 - th/2);
+  } else {
+    tx = r.left - tw - 16;
+    ty = Math.max(10, rect.top + rect.height/2 - th/2);
+  }
+
+  tooltip.style.left = tx + 'px';
+  tooltip.style.top = ty + 'px';
+  tooltip.style.maxWidth = tw + 'px';
+}
+
+function hideSpotlight(){
+  ['ob-top','ob-bottom','ob-left','ob-right'].forEach(id=>{
+    document.getElementById(id).style.cssText = '';
+  });
+  document.getElementById('ob-pulse').style.display = 'none';
+  document.getElementById('ob-tooltip').style.display = 'none';
+}
+
+function onboardingNext(){
+  if(!obActive) return;
+  obStep++;
+  if(obStep >= OB_STEPS.length){
+    finishOnboarding();
+  } else {
+    showObStep(obStep);
+  }
+}
+
+// Вызывается когда игрок нажал ячейку (шаг 4)
+function onboardingCellClicked(){
+  if(!obActive || !obWaitingForAction) return;
+  obWaitingForAction = false;
+  // Небольшая задержка — даём вопросу появиться
+  setTimeout(()=>{
+    obStep++;
+    showObStep(obStep);
+  }, 600);
+}
+
+// Вызывается когда вопрос появился (шаг 5)
+function onboardingQuestionShown(){
+  if(!obActive) return;
+  const step = OB_STEPS[obStep];
+  if(step && step.targetId === 'question-panel'){
+    positionSpotlight(document.getElementById('question-panel'), step);
+  }
+}
+
+async function skipOnboarding(){
+  finishOnboarding();
+}
+
+async function finishOnboarding(){
+  obActive = false;
+  obWaitingForAction = false;
+  hideSpotlight();
+  const overlay = document.getElementById('onboarding-overlay');
+  overlay.style.opacity = '0';
+  setTimeout(()=>{
+    overlay.classList.remove('active');
+    overlay.style.opacity = '';
+  }, 300);
+  // Записываем в Supabase
+  if(currentUser){
+    await sb.from('profiles').update({onboarding_done: true}).eq('id', currentUser.id);
+    if(currentProfile) currentProfile.onboarding_done = true;
+  }
+  track('onboarding_complete', {step: obStep});
+}
+
 // ==================== INIT ====================
 async function init(){
   // Чистим URL
@@ -1201,10 +1529,15 @@ function renderHexBoard(){
 function onCellClick(r,c){
   const g=gameState;
   if(g.questionActive||g.gameOver||g.endingGame||g.cells[r][c]!=='neutral')return;
-  g.selectedCell={r,c};g.questionActive=true;showQuestion(r,c);
+  g.selectedCell={r,c};g.questionActive=true;
+  // Онбординг шаг 4 — игрок нажал ячейку
+  if(obActive && obWaitingForAction) onboardingCellClicked();
+  showQuestion(r,c);
 }
 function showQuestion(r,c){
   const g=gameState;
+  // Онбординг шаг 5 — вопрос показан
+  if(obActive && obStep === 4) setTimeout(onboardingQuestionShown, 400);
   // Берём следующий вопрос из заранее перемешанной очереди
   const q=g.gameQuestions[g.questionIndex % g.gameQuestions.length];
   g.questionIndex++;
@@ -1376,5 +1709,23 @@ function spawnDefeat(){
 
 init();
 </script>
+<!-- ONBOARDING OVERLAY -->
+<div id="onboarding-overlay">
+  <div class="ob-dark" id="ob-top"></div>
+  <div class="ob-dark" id="ob-left"></div>
+  <div class="ob-dark" id="ob-right"></div>
+  <div class="ob-dark" id="ob-bottom"></div>
+  <div class="ob-tooltip" id="ob-tooltip" style="display:none">
+    <div class="ob-step-badge" id="ob-badge">Langkah 1 dari 5</div>
+    <span class="ob-emoji" id="ob-emoji">👋</span>
+    <div class="ob-title" id="ob-title">Selamat datang!</div>
+    <div class="ob-text" id="ob-text">Mari belajar cara bermain!</div>
+    <div class="ob-actions">
+      <button class="ob-btn-skip" onclick="skipOnboarding()">Lewati semua</button>
+      <button class="ob-btn-next" id="ob-btn-next" onclick="onboardingNext()">Lanjut →</button>
+    </div>
+  </div>
+  <div class="ob-pulse" id="ob-pulse" style="display:none"></div>
+</div>
 </body>
 </html>
