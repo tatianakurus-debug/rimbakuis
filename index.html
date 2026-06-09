@@ -990,7 +990,7 @@ const OB_STEPS = [
     screen: 'main',
     tab: 'pertarungan'
   },
-  // Шаг 3: кнопка старта
+  // Шаг 3: кнопка старта — ждём реального нажатия
   {
     targetId: 'btn-battle-main',
     emoji: '🥊',
@@ -998,10 +998,11 @@ const OB_STEPS = [
     text: 'Tekan tombol ini untuk memulai! Bot akan jadi lawan kamu. Kamu siap?',
     badge: 'Langkah 3 dari 5',
     arrow: 'arrow-top',
-    btnText: 'Siap! →',
-    waitForAction: false,
+    btnText: null,
+    waitForAction: true,
     screen: 'main',
-    tab: 'pertarungan'
+    tab: 'pertarungan',
+    actionHint: 'battle_start'
   },
   // Шаг 4: поле — ждём тапа по ячейке
   {
@@ -1478,6 +1479,12 @@ async function startGame(){
   requestAnimationFrame(()=>{
     renderGrids();
     updateScoreHUD();
+    // Онбординг шаг 3 → 4: игра запустилась, показываем подсказку про ячейку
+    if(obActive && obWaitingForAction && OB_STEPS[obStep]?.actionHint === 'battle_start'){
+      obWaitingForAction = false;
+      obStep++;
+      setTimeout(()=>showObStep(obStep), 500);
+    }
   });
   gameState.botInterval=setInterval(botTurn,botSpeed);
   track('game_start',{diff,topic});
@@ -1489,11 +1496,11 @@ async function startGame(){
 function quitGame(){
   if(!gameState)return;
   if(!confirm('Yakin mau keluar? Kamu akan dianggap kalah.'))return;
-  // Останавливаем всё
+  // Останавливаем онбординг если активен
+  if(obActive) finishOnboarding();
   if(gameState.botInterval)clearInterval(gameState.botInterval);
   gameState.gameOver=true;
   gameState.endingGame=true;
-  // Скрываем вопрос если открыт
   stopQuestionTimer();
   stopJungleAmbience();
   document.getElementById('question-panel').style.display='none';
