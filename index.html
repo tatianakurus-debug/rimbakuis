@@ -160,22 +160,22 @@ body{background:var(--jungle-dark);color:var(--white);font-family:'Nunito',sans-
 .battle-intro h2{font-family:'Fredoka One',cursive;font-size:2rem;margin-bottom:.5rem;}
 .battle-intro p{color:var(--text-muted);font-size:.95rem;margin-bottom:1.25rem;}
 .section-label{font-size:.8rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.6rem;text-align:left;}
-.topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.5rem;}
+.topic-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin-bottom:.75rem;}
 @media(max-width:540px){.topic-grid{grid-template-columns:repeat(2,1fr);}}
-.topic-card{position:relative;background:linear-gradient(160deg,rgba(15,61,40,0.9),rgba(10,34,24,0.95));border:2px solid rgba(74,222,128,0.2);border-radius:14px;padding:.85rem .4rem .65rem;cursor:pointer;transition:.25s;text-align:center;overflow:hidden;}
+.topic-card{position:relative;background:linear-gradient(160deg,rgba(15,61,40,0.9),rgba(10,34,24,0.95));border:2px solid rgba(74,222,128,0.2);border-radius:14px;padding:.4rem .4rem .35rem;cursor:pointer;transition:.25s;text-align:center;overflow:hidden;}
 .topic-card::before{content:'🌿';position:absolute;top:-5px;left:-3px;font-size:1.2rem;opacity:0.3;transform:rotate(-30deg);pointer-events:none;}
 .topic-card::after{content:'🌴';position:absolute;bottom:-5px;right:-3px;font-size:1rem;opacity:0.25;transform:rotate(15deg);pointer-events:none;}
 .topic-card.selected{border-color:var(--gold);background:linear-gradient(160deg,rgba(26,107,60,0.7),rgba(15,61,40,0.9));box-shadow:0 0 16px rgba(249,199,79,0.3);}
 .topic-card:hover{border-color:var(--leaf);background:linear-gradient(160deg,rgba(20,80,48,0.8),rgba(12,42,28,0.95));}
-.topic-icon{font-size:1.6rem;margin-bottom:.3rem;display:block;}
+.topic-icon{font-size:1.2rem;margin-bottom:.1rem;display:block;}
 .topic-name{font-weight:800;font-size:.72rem;line-height:1.2;color:var(--white);}
-.difficulty-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1.5rem;}
-.diff-card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:1rem .75rem;cursor:pointer;transition:.2s;text-align:center;}
+.difficulty-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.75rem;}
+.diff-card{background:var(--card-bg);border:2px solid var(--card-border);border-radius:var(--radius);padding:.5rem .75rem;cursor:pointer;transition:.2s;text-align:center;}
 .diff-card.selected{border-color:var(--leaf);background:rgba(74,222,128,0.1);}
 .diff-card:hover{border-color:var(--leaf);}
-.diff-icon{font-size:1.8rem;margin-bottom:.4rem;}
+.diff-icon{font-size:1.4rem;margin-bottom:.15rem;}
 .diff-name{font-weight:800;font-size:.85rem;}
-.diff-desc{font-size:.7rem;color:var(--text-muted);margin-top:.2rem;}
+.diff-desc{font-size:.65rem;color:var(--text-muted);margin-top:.05rem;}
 /* Мини-кнопка Pertarungan для Profil и Peringkat */
 @keyframes shimmer-mini{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 .btn-battle-mini{
@@ -1102,51 +1102,52 @@ function positionSpotlight(el, step){
   };
 
   // 4 тёмных полосы вокруг элемента
-  const top = document.getElementById('ob-top');
-  const bot = document.getElementById('ob-bottom');
-  const left = document.getElementById('ob-left');
-  const right = document.getElementById('ob-right');
+  document.getElementById('ob-top').style.cssText = `top:0;left:0;right:0;height:${r.top}px;`;
+  document.getElementById('ob-bottom').style.cssText = `bottom:0;left:0;right:0;top:${r.bottom}px;`;
+  document.getElementById('ob-left').style.cssText = `top:${r.top}px;left:0;width:${r.left}px;height:${r.height}px;`;
+  document.getElementById('ob-right').style.cssText = `top:${r.top}px;left:${r.right}px;right:0;height:${r.height}px;`;
 
-  top.style.cssText = `top:0;left:0;right:0;height:${r.top}px;`;
-  bot.style.cssText = `bottom:0;left:0;right:0;top:${r.bottom}px;`;
-  left.style.cssText = `top:${r.top}px;left:0;width:${r.left}px;height:${r.height}px;`;
-  right.style.cssText = `top:${r.top}px;left:${r.right}px;right:0;height:${r.height}px;`;
-
-  // Пульс по центру элемента
+  // Пульс
   const pulse = document.getElementById('ob-pulse');
   pulse.style.display = 'block';
   pulse.style.left = (rect.left + rect.width/2) + 'px';
   pulse.style.top = (rect.top + rect.height/2) + 'px';
 
-  // Тултип
+  // Тултип — всегда внутри экрана
   const tooltip = document.getElementById('ob-tooltip');
   tooltip.style.display = 'block';
-  tooltip.className = 'ob-tooltip ' + step.arrow;
+  tooltip.className = 'ob-tooltip';
 
-  // Позиция тултипа
-  const tw = 300, th = 200;
   const vw = window.innerWidth, vh = window.innerHeight;
-  let tx, ty;
+  const tw = Math.min(300, vw - 20);
+  tooltip.style.maxWidth = tw + 'px';
 
-  if(step.arrow === 'arrow-top'){
-    // Тултип снизу от элемента
-    ty = Math.min(r.bottom + 16, vh - th - 10);
-    tx = Math.max(10, Math.min(rect.left + rect.width/2 - tw/2, vw - tw - 10));
-  } else if(step.arrow === 'arrow-bottom'){
-    // Тултип сверху
-    ty = Math.max(10, r.top - th - 16);
-    tx = Math.max(10, Math.min(rect.left + rect.width/2 - tw/2, vw - tw - 10));
-  } else if(step.arrow === 'arrow-left'){
-    tx = r.right + 16;
-    ty = Math.max(10, rect.top + rect.height/2 - th/2);
+  // Измеряем реальную высоту тултипа после рендера
+  const th = tooltip.offsetHeight || 220;
+
+  // Определяем лучшую позицию по вертикали
+  const spaceBelow = vh - r.bottom - 16;
+  const spaceAbove = r.top - 16;
+
+  let ty, arrowClass;
+  if(spaceBelow >= th || spaceBelow >= spaceAbove){
+    // Снизу
+    ty = Math.min(r.bottom + 12, vh - th - 8);
+    arrowClass = 'arrow-top';
   } else {
-    tx = r.left - tw - 16;
-    ty = Math.max(10, rect.top + rect.height/2 - th/2);
+    // Сверху
+    ty = Math.max(8, r.top - th - 12);
+    arrowClass = 'arrow-bottom';
   }
 
+  // Горизонталь — центрируем по элементу, не выходим за экран
+  let tx = rect.left + rect.width/2 - tw/2;
+  tx = Math.max(8, Math.min(tx, vw - tw - 8));
+
+  tooltip.className = 'ob-tooltip ' + arrowClass;
   tooltip.style.left = tx + 'px';
   tooltip.style.top = ty + 'px';
-  tooltip.style.maxWidth = tw + 'px';
+  tooltip.style.width = tw + 'px';
 }
 
 function hideSpotlight(){
