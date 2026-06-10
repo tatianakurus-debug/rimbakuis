@@ -1196,10 +1196,12 @@ function positionSpotlight(el, step){
 
 function hideSpotlight(){
   ['ob-top','ob-bottom','ob-left','ob-right'].forEach(id=>{
-    document.getElementById(id).style.cssText = '';
+    document.getElementById(id).style.cssText='';
   });
-  document.getElementById('ob-pulse').style.display = 'none';
-  document.getElementById('ob-tooltip').style.display = 'none';
+  document.getElementById('ob-pulse').style.display='none';
+  document.getElementById('ob-tooltip').style.display='none';
+  const hole=document.getElementById('ob-spotlight-hole');
+  if(hole) hole.style.cssText='';
 }
 
 function onboardingNext(){
