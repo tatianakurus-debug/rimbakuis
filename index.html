@@ -1563,11 +1563,8 @@ async function startGame(){
   if(pool.length<5)pool=allQuestions;
 
   const botNick=BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)];
-  // FIX 3: Бот получает случайный аватар из тех же что у игроков
   const botAvatar=AVATARS[Math.floor(Math.random()*AVATARS.length)];
 
-  // Перемешиваем пул и берём ровно 15 уникальных вопросов для игры
-  // Если вопросов меньше 15 — дополняем повторами но в другом порядке
   function shuffle(arr){
     const a=[...arr];
     for(let i=a.length-1;i>0;i--){
@@ -1576,13 +1573,59 @@ async function startGame(){
     }
     return a;
   }
-  let shuffled=shuffle(pool);
-  // Если вопросов меньше 15 — добавляем ещё перемешанные копии
-  while(shuffled.length<TOTAL){
-    shuffled=[...shuffled,...shuffle(pool)];
+
+  // ── УМНЫЙ ПОДБОР ВОПРОСОВ ──
+  // Ключ для хранения просмотренных: "topic:diff"
+  const seenKey = `${topic}:${diff}`;
+
+  // Загружаем историю просмотренных вопросов из профиля
+  let seenIds = [];
+  try{
+    if(currentProfile?.seen_questions){
+      const seenMap = typeof currentProfile.seen_questions === 'string'
+        ? JSON.parse(currentProfile.seen_questions)
+        : currentProfile.seen_questions;
+      seenIds = seenMap[seenKey] || [];
+    }
+  }catch(e){ seenIds=[]; }
+
+  // Вопросы которые пользователь ещё НЕ видел
+  const unseen = pool.filter(q=>!seenIds.includes(q.id));
+  // Вопросы которые уже видел (запасной пул)
+  const seen = pool.filter(q=>seenIds.includes(q.id));
+
+  let gamePool;
+  if(unseen.length >= TOTAL){
+    // Достаточно новых вопросов — берём только новые
+    gamePool = shuffle(unseen).slice(0, TOTAL);
+  } else if(unseen.length > 0){
+    // Новых меньше 15 — добавляем уже виденные чтобы добрать до 15
+    gamePool = [...shuffle(unseen), ...shuffle(seen)].slice(0, TOTAL);
+  } else {
+    // Все вопросы уже видены — сбрасываем историю, начинаем заново
+    seenIds = [];
+    gamePool = shuffle(pool).slice(0, TOTAL);
+    // Сбрасываем счётчик для этого ключа в профиле
+    if(currentProfile?.seen_questions){
+      try{
+        const seenMap = typeof currentProfile.seen_questions === 'string'
+          ? JSON.parse(currentProfile.seen_questions)
+          : {...(currentProfile.seen_questions||{})};
+        delete seenMap[seenKey];
+        await sb.from('profiles').update({seen_questions: seenMap}).eq('id',currentUser.id);
+        currentProfile.seen_questions = seenMap;
+      }catch(e){}
+    }
   }
-  // Берём ровно 15 — по одному на каждую ячейку
-  const gameQuestions=shuffled.slice(0,TOTAL);
+
+  // Если пула не хватает до 15 — дополняем
+  if(gamePool.length < TOTAL){
+    let extra = shuffle(pool);
+    while(gamePool.length < TOTAL) gamePool = [...gamePool, ...extra];
+    gamePool = gamePool.slice(0, TOTAL);
+  }
+
+  const gameQuestions = gamePool;
 
   gameState={
     cells:Array(ROWS).fill(null).map(()=>Array(COLS).fill('neutral')),
@@ -1808,8 +1851,23 @@ async function endGame(){
       const newScore=Math.max(0,currentProfile.score+pts);
       const newWins=currentProfile.wins+(won?1:0);
       const newLosses=currentProfile.losses+(won?0:1);
+
+      // Обновляем историю просмотренных вопросов
+      const seenKey=`${g.topic}:${g.diff}`;
+      let seenMap={};
+      try{
+        seenMap=typeof currentProfile.seen_questions==='string'
+          ?JSON.parse(currentProfile.seen_questions)
+          :{...(currentProfile.seen_questions||{})};
+      }catch(e2){}
+      const prevSeen=seenMap[seenKey]||[];
+      seenMap[seenKey]=[...new Set([...prevSeen,...g.gameQuestions.map(q=>q.id)])];
+
       const [upd]=await Promise.all([
-        sb.from('profiles').update({score:newScore,wins:newWins,losses:newLosses}).eq('id',currentUser.id),
+        sb.from('profiles').update({
+          score:newScore,wins:newWins,losses:newLosses,
+          seen_questions:seenMap
+        }).eq('id',currentUser.id),
         sb.from('game_results').insert({player_id:currentUser.id,won,player_score:g.playerScore,bot_score:g.botScore,correct_answers:g.correctCount,wrong_answers:g.wrongCount})
       ]);
       if(upd.error){
@@ -1818,13 +1876,12 @@ async function endGame(){
         currentProfile.score=newScore;
         currentProfile.wins=newWins;
         currentProfile.losses=newLosses;
-        // Обновляем total poin на экране результата после сохранения
+        currentProfile.seen_questions=seenMap;
         document.getElementById('rs-total').textContent=newScore;
         renderProfile();
       }
     }catch(e){
       console.error('[RimbaKuis] endGame DB error',e);
-      if(typeof Sentry!=='undefined')Sentry.captureException(e);
     }
   }
 }
