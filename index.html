@@ -1258,16 +1258,49 @@ async function finishOnboarding(){
 
 // ==================== INIT ====================
 async function init(){
-  // Чистим URL
+  // Чистим URL от лишнего #
   if(window.location.hash==='#'){
     history.replaceState(null,'',window.location.pathname);
   }
 
+  // Флаг — не обрабатываем сессию если это reset пароля
+  let isPasswordReset = false;
+
+  // ВАЖНО: onAuthStateChange регистрируем ПЕРВЫМ
+  // чтобы поймать PASSWORD_RECOVERY до getSession
+  sb.auth.onAuthStateChange(async(event,session)=>{
+    console.log('[auth]',event);
+    if(event==='PASSWORD_RECOVERY'){
+      isPasswordReset = true;
+      clearTimeout(fallback);
+      showPasswordResetForm();
+      return;
+    }
+    if(event==='SIGNED_IN'&&session&&!currentUser&&!isPasswordReset){
+      clearTimeout(fallback);
+      currentUser=session.user;
+      await Promise.all([loadProfile(),loadQuestions()]);
+      renderAvatarPicker();
+      if(window.location.search||window.location.hash.includes('access_token')){
+        history.replaceState(null,'',window.location.pathname);
+      }
+      showScreen('main');
+      startMenuMusic();
+    }
+    if(event==='SIGNED_OUT'){
+      currentUser=null;currentProfile=null;
+      showScreen('auth');
+    }
+  });
+
   // Через 6 сек — всегда показываем auth, не ждём бесконечно
-  const fallback=setTimeout(()=>showScreen('auth'), 6000);
+  const fallback=setTimeout(()=>{
+    if(!currentUser && !isPasswordReset) showScreen('auth');
+  }, 6000);
 
   try{
     const{data:{session}}=await sb.auth.getSession();
+    if(isPasswordReset) return; // уже обрабатывается через onAuthStateChange
     clearTimeout(fallback);
     if(session&&session.user){
       currentUser=session.user;
@@ -1283,28 +1316,6 @@ async function init(){
     console.error('[init]',e);
     showScreen('auth');
   }
-
-  // Слушаем живые события после первой загрузки
-  sb.auth.onAuthStateChange(async(event,session)=>{
-    console.log('[auth]',event);
-    if(event==='PASSWORD_RECOVERY'){
-      showPasswordResetForm();
-      return;
-    }
-    if(event==='SIGNED_IN'&&session&&!currentUser){
-      currentUser=session.user;
-      await Promise.all([loadProfile(),loadQuestions()]);
-      renderAvatarPicker();
-      if(window.location.search||window.location.hash.includes('access_token')){
-        history.replaceState(null,'',window.location.pathname);
-      }
-      showScreen('main');
-    }
-    if(event==='SIGNED_OUT'){
-      currentUser=null;currentProfile=null;
-      showScreen('auth');
-    }
-  });
 
   runtimePing();
 }
