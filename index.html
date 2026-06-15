@@ -1755,40 +1755,47 @@ function showQuestion(r,c){
 }
 function onAnswer(chosen,correct){
   const g=gameState;
-  if(!g.questionActive||g.gameOver)return;
+  if(!g.questionActive||g.gameOver||g.endingGame)return;
+  // Защита: если selectedCell потерялся — игнорируем
+  if(!g.selectedCell){g.questionActive=false;checkGameOver();return;}
   stopQuestionTimer();
   const isCorrect=chosen===correct;
-  // Подсветка ответов
   document.querySelectorAll('.answer-btn').forEach((b,i)=>{
     b.classList.add(i===correct?'correct':i===chosen&&chosen!==correct?'wrong':'disabled');
   });
   const{r,c}=g.selectedCell;
-  if(isCorrect){
-    g.cells[r][c]='player';g.playerScore++;g.correctCount++;
-    if(jungleAudio?.playCorrect) jungleAudio.playCorrect();
-  } else {
-    g.cells[r][c]='enemy';g.botScore++;g.wrongCount++;
-    if(jungleAudio?.playWrong) jungleAudio.playWrong();
+  // Двойная проверка — ячейка всё ещё нейтральная (защита от race condition)
+  if(g.cells[r][c]==='neutral'){
+    if(isCorrect){
+      g.cells[r][c]='player';g.playerScore++;g.correctCount++;
+      if(jungleAudio?.playCorrect) jungleAudio.playCorrect();
+    } else {
+      g.cells[r][c]='enemy';g.botScore++;g.wrongCount++;
+      if(jungleAudio?.playWrong) jungleAudio.playWrong();
+    }
+    updateScoreHUD();renderGrids();
   }
-  updateScoreHUD();renderGrids();
   setTimeout(()=>{
     document.getElementById('question-panel').style.display='none';
     g.questionActive=false;g.selectedCell=null;
     checkGameOver();
-    // Бот ходит сразу после закрытия вопроса — не ждёт следующего интервала
-    if(!g.gameOver&&!g.endingGame){
-      setTimeout(()=>botTurn(), 800);
+    // Бот ходит сразу, но только если setInterval ещё не запланировал ход
+    if(!g.gameOver&&!g.endingGame&&!g.botTurnPending){
+      g.botTurnPending=true;
+      setTimeout(()=>{if(g.botTurnPending){g.botTurnPending=false;botTurn();}}, 800);
     }
   },1200);
 }
 function botTurn(){
-  const g=gameState;if(g.gameOver||g.endingGame||g.questionActive)return;
+  const g=gameState;
+  if(g.gameOver||g.endingGame||g.questionActive)return;
+  g.botTurnPending=false; // сбрасываем флаг при вызове из интервала
   const neutral=[];
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(g.cells[r][c]==='neutral')neutral.push({r,c});
   if(!neutral.length){checkGameOver();return;}
   const pick=neutral[Math.floor(Math.random()*neutral.length)];
-  // FIX 1: Ошибка бота = ячейка переходит к игроку
-  // mudah=4 ошибки, sedang=3, sulit=2
+  // Ещё раз проверяем что ячейка нейтральна (защита от двойного хода)
+  if(g.cells[pick.r][pick.c]!=='neutral'){renderGrids();return;}
   if(g.botMistakesLeft>0&&Math.random()<(g.botMistakesLeft/Math.max(neutral.length,1))){
     g.cells[pick.r][pick.c]='player';
     g.playerScore++;
