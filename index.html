@@ -1257,6 +1257,15 @@ async function finishOnboarding(){
 }
 
 // ==================== INIT ====================
+
+// Обёртка с таймаутом для любого промиса
+function withTimeout(promise, ms, fallbackValue){
+  return Promise.race([
+    promise,
+    new Promise(resolve=>setTimeout(()=>resolve(fallbackValue), ms))
+  ]);
+}
+
 async function init(){
   if(window.location.hash==='#'){
     history.replaceState(null,'',window.location.pathname);
@@ -1265,37 +1274,62 @@ async function init(){
   let isPasswordReset=false;
   let handled=false;
 
-  // Таймаут объявляем ДО onAuthStateChange — чтобы колбэк мог его очистить
+  // Жёсткий фоллбэк — через 8 сек всегда показываем auth
   const fallback=setTimeout(()=>{
     if(!handled&&!isPasswordReset){
-      console.warn('[init] fallback timeout');
+      console.warn('[init] hard fallback — showing auth');
       showScreen('auth');
     }
-  },6000);
+  },8000);
 
+  function markHandled(){
+    if(handled)return false;
+    handled=true;
+    clearTimeout(fallback);
+    return true;
+  }
+
+  // Загрузка данных с таймаутами чтобы не зависать
+  async function loadAppData(){
+    await Promise.all([
+      withTimeout(loadProfile(), 5000, null),
+      withTimeout(loadQuestions(), 5000, null)
+    ]);
+    renderAvatarPicker();
+  }
+
+  // onAuthStateChange — ловим все события включая INITIAL_SESSION
   sb.auth.onAuthStateChange(async(event,session)=>{
     console.log('[auth]',event);
+
     if(event==='PASSWORD_RECOVERY'){
       isPasswordReset=true;
-      handled=true;
-      clearTimeout(fallback);
+      markHandled();
       showPasswordResetForm();
       return;
     }
-    if(event==='SIGNED_IN'&&session&&!currentUser&&!isPasswordReset&&!handled){
-      handled=true;
-      clearTimeout(fallback);
+
+    // INITIAL_SESSION — стреляет при восстановлении сессии из localStorage
+    // SIGNED_IN — при свежем логине
+    if((event==='INITIAL_SESSION'||event==='SIGNED_IN')&&session?.user&&!isPasswordReset){
+      if(!markHandled())return;
       currentUser=session.user;
-      try{
-        await Promise.all([loadProfile(),loadQuestions()]);
-        renderAvatarPicker();
-      }catch(e){console.error('[init] load error',e);}
+      try{ await loadAppData(); }catch(e){ console.error('[init] loadAppData',e); }
       if(window.location.search||window.location.hash.includes('access_token')){
         history.replaceState(null,'',window.location.pathname);
       }
       showScreen('main');
       startMenuMusic();
+      return;
     }
+
+    // INITIAL_SESSION без сессии = не залогинен
+    if(event==='INITIAL_SESSION'&&!session){
+      if(!markHandled())return;
+      showScreen('auth');
+      return;
+    }
+
     if(event==='SIGNED_OUT'){
       handled=false;
       currentUser=null;currentProfile=null;
@@ -1303,25 +1337,30 @@ async function init(){
     }
   });
 
+  // Параллельно пробуем getSession — быстрее чем ждать onAuthStateChange
   try{
-    const{data:{session},error}=await sb.auth.getSession();
-    if(isPasswordReset||handled)return;
+    const{data:{session},error}=await withTimeout(
+      sb.auth.getSession(),
+      4000,
+      {data:{session:null},error:null}
+    );
+    if(isPasswordReset||handled)return; // onAuthStateChange уже обработал
     clearTimeout(fallback);
     if(error) throw error;
-    if(session&&session.user){
-      handled=true;
+    if(session?.user){
+      if(!markHandled())return;
       currentUser=session.user;
-      await Promise.all([loadProfile(),loadQuestions()]);
-      renderAvatarPicker();
+      try{ await loadAppData(); }catch(e){ console.error('[init] loadAppData',e); }
       showScreen('main');
       startMenuMusic();
     } else {
+      if(!markHandled())return;
       showScreen('auth');
     }
   }catch(e){
     clearTimeout(fallback);
-    console.error('[init]',e);
-    showScreen('auth');
+    console.error('[init] getSession error',e);
+    if(!handled) showScreen('auth');
   }
 
   runtimePing();
